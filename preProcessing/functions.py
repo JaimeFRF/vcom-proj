@@ -2,26 +2,39 @@ import cv2
 
 #Blur
 
-def gaussian(img, ksize = (5, 5)):
-    return (img[0], cv2.GaussianBlur(img[1], ksize, 0))
+#reduce noise with smoothing, but lose edges quality
+def gaussian(data, ksize =(5, 5)):
+    data["image"] = cv2.GaussianBlur(data["image"], ksize, 0)
+    return data
 
-def median(img, ksize = 5):
-    return (img[0], cv2.medianBlur(img[1], ksize))
+def median(data, ksize = 5):
+    data["image"] = cv2.medianBlur(data["image"], ksize)
+    return data
 
-def bilateral(img, d = 15, sigmaColor = 75, sigmaSpace = 75):
-    return (img[0], cv2.bilateralFilter(img[1], d, sigmaColor, sigmaSpace)) 
+# reduce noise with smoothing, but keep edges sharp
+#source: https://docs.opencv.org/4.x/d4/d86/group__imgproc__filter.html#ga9d7064d478c95d60003cf839430737ed
+def bilateral(data, d = 15, sigmaColor = 75, sigmaSpace = 75):
+    data["image"] = cv2.bilateralFilter(
+        data["image"], 
+        d, # pixel neighborhood used during filtering, aka kernel size
+        sigmaColor, #larger value -> farther colors within the pixel neighborhood (based on sigmaSpace) will be mixed together
+        sigmaSpace) #larger value -> farther pixels will influence each other as long as their colors are close enough (based on sigmaColor)
+    return data
 
 # Binarization
 
-def convert_to_gray(img):
-    return (img[0], cv2.cvtColor(img[1], cv2.COLOR_BGR2GRAY))
+def convert_to_gray(data):
+    data["image"] = cv2.cvtColor(data["image"], cv2.COLOR_BGR2GRAY)
+    return data
 
 # Normalization
 
-def normalize(img, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX):
-    return (img[0], cv2.normalize(img[1], None, alpha, beta, norm_type))
+def normalize(data, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX):
+    data["image"] = cv2.normalize(data["image"], None, alpha, beta, norm_type)
+    return data
 
 # Equalize Histogram
 
-def equalizeHist(img):
-    return (img[0], cv2.equalizeHist(img[1]))
+def equalizeHist(data):
+    data["image"] = cv2.equalizeHist(data["image"])
+    return data
