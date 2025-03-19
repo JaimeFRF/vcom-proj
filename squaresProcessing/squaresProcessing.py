@@ -1,6 +1,6 @@
 from functools import reduce
 
-class PreProcessing:
+class SquaresProcessing:
     def __init__ (self, operations):
         self.operations = operations if operations else []
 
