@@ -1,8 +1,22 @@
 import math
 
 #canny edge detection
-canny_low_threshold = 150
-canny_high_threshold = 200
+canny_low_threshold = 50
+canny_high_threshold = 150
+
+# dilate edges
+dilate_ksize = (3, 3)
+dilate_iterations = 1
+
+#closing image
+closing_ksize = (7, 7)
+closing_iterations = 3
+
+#find_board_contour_and_corners
+approxPolyDP_epsilon = 0.05 # higher epsilon -> less vertices -> better board shape approximation to a square
+
+# warp image
+warp_width = warp_height = 500
 
 #hough lines
 hough_rho = 1 # resolution in pixels of the Hough grid
