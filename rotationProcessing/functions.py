@@ -12,7 +12,7 @@ def sift(data, keypointsFieldTitle="keypoints", descriptorsFieldTitle="descripto
     return data
 
 # aplly flann_matcher to match feature descriptors between two images
-def flann_matcher(data, descriptors2, descriptors1="descriptors", matchesTitle="matches"):
+def flann_matcher(data, descriptors1, descriptors2="descriptors", matchesTitle="matches"):
     FLANN_INDEX_KDTREE = 1
     index_params = dict(algorithm=FLANN_INDEX_KDTREE, trees=5)
     search_params = dict(checks=50)  # or pass empty dictionary
@@ -26,7 +26,7 @@ def flann_matcher(data, descriptors2, descriptors1="descriptors", matchesTitle="
     return data
 
 #apply RANSAC to estimate homography from matches
-def find_homography_from_matches(data, keypoints2, keypoints1="keypoints", matchesTitle="matches", homographyTitle_result="homography"):
+def find_homography_from_matches(data, keypoints1, keypoints2="keypoints", matchesTitle="matches", homographyTitle_result="homography"):
     
     matches = data["metadata"].get(matchesTitle,None)
     kp1 = data["metadata"].get(keypoints1, None)

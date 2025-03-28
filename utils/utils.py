@@ -2,6 +2,8 @@ import cv2
 import math
 import random
 import numpy as np
+import os
+
 #Colors
 color_red = (0,0,255)
 color_green = (0,255,0)
@@ -72,14 +74,23 @@ def read_other_image(data, path, format=cv2.IMREAD_GRAYSCALE, imageFieldName="ne
     data["metadata"][imageFieldName] = cv2.imread(path, format)
     return data
 
+# save dimensions of an image into metadat to use later (e.g. for homography)
 def save_image_dimensions_in_metadata(data, widthFieldTitle="width", heightFieldTitle="height"):
     data["metadata"][heightFieldTitle], data["metadata"][widthFieldTitle] = data["image"].shape[:2]
     return data
 
+#save current image in metadata to use in prints later
 def save_current_image_in_metadata(data, fieldName="image2"):
     data["metadata"][fieldName] = data["image"]
     return data
 
+# set the current image to the one stored in metadata
+def set_current_image(data, imageFieldName="image2"):
+    data["image"] = data["metadata"][imageFieldName].copy()
+    return data
+
+# draw square box in current image, after applying a homography matrix to the box corners
+# ex: used to draw small horse box in the warped img
 def draw_perspective_transformed_points(data, color=color_yellow, linesThickness=2, widthTitle="width", heightTitle="height", homographyTitle="homography", imageTitle="Train Image with Object Outline"):
 
     width = data["metadata"].get(widthTitle, None)
@@ -114,3 +125,66 @@ def draw_crosshair(data, color=color_white, thickness=2, size=20, imageTitle="Ce
 
     return data
 
+#draw grid, the jupyter notebook way, has better results, but uses weird size?
+def draw_grid(data, color=color_green, thickness=1, imageTitle="Grid", grid_cols=8, grid_rows=8, imgFieldName=None):
+    img = None
+
+    if (imgFieldName is not None):
+        img = data["metadata"][imgFieldName].copy()
+    else:
+        img = data["image"].copy()
+
+    size = round((465-44) / 8)
+    #size = round((460-40) / 8)
+
+    # Extract and save each tile
+    for j in range(grid_cols):
+        for i in range(grid_rows):
+            # Get tile position
+            x1, y1 = i * size, j * size
+            x2, y2 = x1 + size, y1 + size
+
+            # Draw rectangle on the original image for visualization
+            cv2.rectangle(img, (x1, y1), (x2, y2), color, thickness)
+
+    cv2.imshow(imageTitle, img)
+    data["image"] = img
+    return data
+
+# draw grid with lines for rows and columns, simpler way
+def draw_grid_2(data, color=color_orange, thickness=1, imageTitle="Grid", grid_cols=8, grid_rows=8, imgFieldName=None):
+    img = None
+
+    if (imgFieldName is not None):
+        img = data["metadata"][imgFieldName].copy()
+    else:
+        img = data["image"].copy()
+
+    h, w = img.shape[:2]
+
+    #draw vertical lines
+    for j in range(1, grid_cols):
+        line_x_index = j * w // grid_cols
+        cv2.line(img, (line_x_index, 0), (line_x_index, h), color, thickness)
+    
+    #draw horizontal lines
+    for i in range(1, grid_rows):
+        line_y_index = i * h // grid_rows
+        cv2.line(img, (0, line_y_index), (w, line_y_index), color, thickness)
+   
+   
+    cv2.imshow(imageTitle, img)
+    return data
+
+def print_field_value(data, fieldName, withFieldName=False, withNewline=False):
+    value = data["metadata"].get(fieldName, None)
+    if (value is None):
+        raise ValueError(f"Field {fieldName} must be defined previously in pipeline, to print its value")
+    
+    field_string = ""
+    if (withFieldName):
+        field_string += f"{fieldName}: "
+    if (withNewline):
+        field_string += "\n"
+    print(f"{field_string}{value}")
+    return data
