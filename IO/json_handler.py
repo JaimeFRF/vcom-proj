@@ -12,6 +12,17 @@ def read_images():
     for i in data["images"]]
     return images_dict
 
+def read_single_image(path):
+    orig_img = cv2.imread(path)
+    img_dict = [{
+        "name": path,
+        "orig_img": orig_img,
+        "image": orig_img,
+        "metadata": {}
+    }]
+    
+    return img_dict
+
 #TODO
 def write_results():
     return 0

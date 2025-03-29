@@ -33,8 +33,7 @@ def normalize(data, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX):
     data["image"] = cv2.normalize(data["image"], None, alpha, beta, norm_type)
     return data
 
-# Equalize Histogram
-
+# Equalize Histogram for main pipeline image
 def equalizeHist(data):
     data["image"] = cv2.equalizeHist(data["image"])
     return data
