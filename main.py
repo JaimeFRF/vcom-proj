@@ -44,7 +44,7 @@ squares_pipeline = SquaresProcessing([
     partial(closing, ksize=squaresParams.closing_ksize, iterations=squaresParams.closing_iterations),
     # partial(show_current_image, imageTitle="Canny Dilated Closed", resizeAmount=0.25),
     partial(find_board_countour_and_corners, approxPolyDP_epsilon=squaresParams.approxPolyDP_epsilon),
-    partial(draw_contours, imageTitle="Original with Countors", fieldName="board_contour"),
+    # partial(draw_contours, imageTitle="Original with Countors", fieldName="board_contour"),
     partial(warp_image_from_board_corners,warp_width=squaresParams.warp_width, warp_height=squaresParams.warp_height),
     # partial(hough_lines, rho=squaresParams.hough_rho, theta=squaresParams.hough_theta, votes=squaresParams.hough_votes),
     # partial(draw_hough_lines, color=Utils.color_red, withText=False)
@@ -78,9 +78,7 @@ rotate_pipeline = RotationProcessing([
 #extract the single squares from the board, and classify them
 single_squares_pipeline = SingleSquaresProcessing([
     cut_corners,
-    draw_grid, 
     separate_squares,
-    partial(show_separate_square, index=62),
     calculate_matrix_representation,
     partial(print_field_value, fieldName="chessboard_matrix"),
     partial(print_field_value, fieldName="total_black", withFieldName=True),
