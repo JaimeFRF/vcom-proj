@@ -5,6 +5,8 @@ import singleSquaresProcessing.parameters as Parameters
 import numpy as np
 import os
 
+## Module for functions related to splitting the board into tiles, processing the tiles, and classifying the pieces in them
+
 #cut image corners all around, by certain amount
 def cut_corners(data, cut_size=40):
     data["image"] = data["image"][cut_size:460, cut_size:460]
@@ -51,7 +53,7 @@ def show_all_separate_squares(data, squaresListFieldName="squares_list"):
         raise ValueError("Squares list must be defined previously in pipeline, to show all squares")
     
     for i, square in enumerate(squares_list):
-        cv2.imshow(f"Square {i//8}-{i%8}", square)
+        Utils.show_image_with_name(data, f"Square {i//8}-{i%8}", square)
     
     return data
 
@@ -66,7 +68,7 @@ def show_separate_square(data, index, squaresListFieldName="squares_list"):
         raise ValueError(f"Index {index} out of bounds for squares list of length {len(squares_list)}")
     
     square = squares_list[index]
-    cv2.imshow(f"Square {index//8}-{index%8}", square)
+    Utils.show_image_with_name(data, f"Square {index//8}-{index%8}", square)
 
     return data
 
@@ -92,7 +94,8 @@ def check_W_in_W(img):
 
     # Convert to HSV color space
     hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
-    #cv2.imshow("HSV", hsv)
+    
+    # Utils.show_image_with_name(data, "HSV", hsv)
 
     # Create a mask:
     # - S (saturation) < 82 (low saturation for white/light colors)
@@ -115,7 +118,7 @@ def check_W_in_B(img):
 
     # Convert to HSV color space
     hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
-    cv2.imshow("HSV", hsv)
+    # Utils.show_image_with_name(data, "HSV", hsv)
 
     # Create a mask:
     # - S (saturation) < 82 (low saturation for white/light colors)
@@ -138,7 +141,7 @@ def check_B_in_B(img):
 
     # Convert to HSV color space
     hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
-    #cv2.imshow("HSV", hsv)
+    # Utils.show_image_with_name(data, "HSV", hsv)
 
     # Create a mask:
     # - S (saturation) > 82 (low saturation for white/light colors)

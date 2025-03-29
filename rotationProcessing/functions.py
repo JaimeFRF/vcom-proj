@@ -3,6 +3,8 @@ import utils.utils as Utils
 import math
 import numpy as np
 
+## Module for functions related to rotating the board to the correct position, based on the little horse in the corner
+
 # apply sift, to detect feature keypoints and compute their descriptors
 def sift(data, keypointsFieldTitle="keypoints", descriptorsFieldTitle="descriptors"):
     sift = cv2.SIFT_create()

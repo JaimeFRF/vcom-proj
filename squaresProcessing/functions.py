@@ -4,6 +4,8 @@ import utils.utils as Utils
 import math
 import numpy as np
 
+## Module for functions related to identifying the board layout, and warping it to have a straight grid perspective
+
 # detect edges in image
 def canny(data, low=100, high=200):
     data["image"] = cv2.Canny(

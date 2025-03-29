@@ -17,16 +17,25 @@ def wait_for_exit():
         pass
     cv2.destroyAllWindows()
 
+#show resulting images from pipeline
 def show_images(imgs_data, size=(500, 500)):
     for i in imgs_data:
-        cv2.imshow(i["name"], cv2.resize(i["image"], size))
+        cv2.imshow(f"final_{i['name']}", cv2.resize(i["image"], size))
 
     wait_for_exit()
 
-def draw_hough_lines(data, color=color_red, withText=False, textSize=1.5):
-    lines = data["metadata"].get("lines", None) # lines data from previous function in pipeline
+# helper function to show an image and add the original image name to the window title. Used for debug draw functions,
+# this way, different images aren't overwriting the same named window throughout the pipeline (which would only make imshow windows visible for the last image in pipeline)
+def show_image_with_name(data, imageTitle, image):
+    image_window_name = f"{imageTitle}_{data['name']}"
+    cv2.imshow(image_window_name, image)
+    return data
+
+# draw hough lines over original image
+def draw_hough_lines(data, color=color_red, withText=False, textSize=1.5, houghLinesFieldName="lines", imageTitle="Hough Lines"):
+    lines = data["metadata"].get(houghLinesFieldName, None) # lines data from previous function in pipeline
     if (lines is None):
-        raise ValueError("Lines data must be defined previously in pipeline, in order to draw lines")
+        raise ValueError(f"{houghLinesFieldName} data must be defined previously in pipeline, in order to draw lines")
     
     img = data["orig_img"].copy()
 
@@ -50,9 +59,10 @@ def draw_hough_lines(data, color=color_red, withText=False, textSize=1.5):
             text_pos = (int((pt1_text[0] + pt2_text[0]) /2), int((pt1_text[1] + pt2_text[1]) /2) + random.randint(5,50))
             cv2.putText(img, f"r:{rho}, ang:{theta}", text_pos, cv2.FONT_HERSHEY_SIMPLEX, textSize, color, 1, cv2.LINE_AA)
         
-    cv2.imshow("Hough Lines", img)
+    show_image_with_name(data, imageTitle, img)
     return data
 
+#draw chessboard calculated countours over original image
 def draw_contours(data, imageTitle="Contours", color=color_green, thickness=3, fieldName="contours"):
     contours = data["metadata"].get(fieldName, None) # contours data from previous function in pipeline
     if (contours is None):
@@ -60,13 +70,13 @@ def draw_contours(data, imageTitle="Contours", color=color_green, thickness=3, f
     
     img = data["orig_img"].copy()
     img = cv2.drawContours(img, contours, -1, color, thickness)
-    cv2.imshow(imageTitle, img)
+    show_image_with_name(data, imageTitle, img)
     return data
 
 # print a single image during pipeline
 def show_current_image(data, imageTitle="current image", resizeAmount=1):
     resize_img = cv2.resize(data["image"], (0, 0), fx=resizeAmount, fy=resizeAmount)
-    cv2.imshow(imageTitle, resize_img)
+    show_image_with_name(data, imageTitle, resize_img)
     return data
 
 # read an image from a path, during the pipeline, and add it to the data dictionary
@@ -84,7 +94,7 @@ def save_current_image_in_metadata(data, fieldName="image2"):
     data["metadata"][fieldName] = data["image"]
     return data
 
-# set the current image to the one stored in metadata
+# set the current image in pipeline to the one stored in metadata
 def set_current_image(data, imageFieldName="image2"):
     data["image"] = data["metadata"][imageFieldName].copy()
     return data
@@ -112,7 +122,7 @@ def draw_perspective_transformed_points(data, color=color_yellow, linesThickness
     transformed_corners = np.int32(transformed_corners)
     cv2.polylines(train_with_box, [transformed_corners], True, color, linesThickness)
 
-    cv2.imshow(imageTitle, train_with_box)
+    show_image_with_name(data, imageTitle, train_with_box)
 
     return data
 
@@ -121,7 +131,7 @@ def draw_crosshair(data, color=color_white, thickness=2, size=20, imageTitle="Ce
     h, w = center_img.shape[:2]
     center = (w // 2, h // 2)
     cv2.drawMarker(center_img, center, color, cv2.MARKER_CROSS, size, thickness)
-    cv2.imshow(imageTitle, center_img)
+    show_image_with_name(data, imageTitle, center_img)
 
     return data
 
@@ -147,8 +157,7 @@ def draw_grid(data, color=color_green, thickness=1, imageTitle="Grid", grid_cols
             # Draw rectangle on the original image for visualization
             cv2.rectangle(img, (x1, y1), (x2, y2), color, thickness)
 
-    cv2.imshow(imageTitle, img)
-    data["image"] = img
+    show_image_with_name(data, imageTitle, img)
     return data
 
 # draw grid with lines for rows and columns, simpler way
@@ -173,7 +182,7 @@ def draw_grid_2(data, color=color_orange, thickness=1, imageTitle="Grid", grid_c
         cv2.line(img, (0, line_y_index), (w, line_y_index), color, thickness)
    
    
-    cv2.imshow(imageTitle, img)
+    show_image_with_name(data, imageTitle, img)
     return data
 
 def print_field_value(data, fieldName, withFieldName=False, withNewline=False):
