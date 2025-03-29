@@ -24,7 +24,7 @@ def flann_matcher(data, descriptors1, descriptors2="descriptors", matchesTitle="
     # Store all matches (taking the best match from each pair)
     good = []
     for m, n in matches:
-        if m.distance < 0.7 * n.distance:
+        if m.distance < 0.8 * n.distance:
             good.append(m)
 
     data["metadata"][matchesTitle] = good
