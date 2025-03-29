@@ -72,94 +72,6 @@ def show_separate_square(data, index, squaresListFieldName="squares_list"):
 
     return data
 
-# check for black pieces in white squares
-def check_B_in_W(img):
-    # Convert to grayscale
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    
-    # Binarize the image (black = 0, white = 255)
-    _, thresh = cv2.threshold(gray, 127, 255, cv2.THRESH_BINARY)
-    
-    # Count black and white pixels
-    black_pixels = np.sum(thresh == 0)  # Pixels with value 0
-    white_pixels = np.sum(thresh == 255)  # Pixels with value 255
-    
-    # Return True if black pixels exceed white pixels
-    return black_pixels > 650
-
-
-
-# check for white pieces in white squares
-def check_W_in_W(img):
-
-    # Convert to HSV color space
-    hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
-    
-    # Utils.show_image_with_name(data, "HSV", hsv)
-
-    # Create a mask:
-    # - S (saturation) < 82 (low saturation for white/light colors)
-    # - V (value/brightness) < 101 (darker areas excluded)
-    # Pixels within this range will be 255 (white), others 0 (black)
-    upper_bound = (179, 255, 255)    # Minimum H, S, V
-    lower_bound = (0, 82, 101)  # Maximum H, S, V
-    mask = cv2.inRange(hsv, lower_bound, upper_bound)
-    #print_resized_up("Mask", mask)
-
-    # Count white pixels (255) and black pixels (0) in the mask
-    white_pixels = np.sum(mask == 255)
-    black_pixels = np.sum(mask == 0)
-
-    # Return True if more white pixels than black (indicating a light area/piece)
-    return white_pixels > 650
-
-# check for white pieces in black squares
-def check_W_in_B(img):
-
-    # Convert to HSV color space
-    hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
-    # Utils.show_image_with_name(data, "HSV", hsv)
-
-    # Create a mask:
-    # - S (saturation) < 82 (low saturation for white/light colors)
-    # - V (value/brightness) < 101 (darker areas excluded)
-    # Pixels within this range will be 255 (white), others 0 (black)
-    upper_bound = (179, 255, 255)    # Minimum H, S, V
-    lower_bound = (0, 49, 80)  # Maximum H, S, V
-    mask = cv2.inRange(hsv, lower_bound, upper_bound)
-
-    # Count white pixels (255) and black pixels (0) in the mask
-    white_pixels = np.sum(mask == 255)
-    black_pixels = np.sum(mask == 0)
-    # print(f"White pixels: {white_pixels}, Black pixels: {black_pixels}")
-
-    # Return True if more white pixels than black (indicating a light area/piece)
-    return white_pixels > 650
-
-# check for black pieces in black squares
-def check_B_in_B(img):
-
-    # Convert to HSV color space
-    hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
-    # Utils.show_image_with_name(data, "HSV", hsv)
-
-    # Create a mask:
-    # - S (saturation) > 82 (low saturation for white/light colors)
-    # - V (value/brightness) < 101 (darker areas excluded)
-    # Pixels within this range will be 255 (white), others 0 (black)
-    upper_bound = (179, 255, 30)    # Minimum H, S, V
-    lower_bound = (0, 0, 0)  # Maximum H, S, V
-    mask = cv2.inRange(hsv, lower_bound, upper_bound)
-    #print_resized_up("Mask", mask)
-
-    # Count white pixels (255) and black pixels (0) in the mask
-    white_pixels = np.sum(mask == 255)
-    black_pixels = np.sum(mask == 0)
-    #print(f"White pixels: {white_pixels}, Black pixels: {black_pixels}")
-
-    # Return True if more white pixels than black (indicating a light area/piece)
-    return white_pixels > 650
-
 # from split tiles of board, identify occupied tiles and which color piece it contains
 # squaresListFieldName: name of the field in metadata where the list of squares is stored
 # matrixFieldName: name of the field in metadata where the matrix representation will be stored 
@@ -179,27 +91,31 @@ def calculate_matrix_representation(data, squaresListName="squares_list", matrix
     chessboard_matrix = np.zeros((8, 8), dtype=int)
 
     for i, tile in enumerate(squares_list):
+            grey = cv2.cvtColor(tile, cv2.COLOR_BGR2GRAY)
+
+            # TODO: Tunar esta situação
+            circle = cv2.HoughCircles(grey, cv2.HOUGH_GRADIENT, 1,20, param1=50,param2=25,minRadius=0,maxRadius=0)
             row = i // 8
             col = i % 8
-            # Check if the tile is black or white based on its position
-            if i % 2 == 0:  # Black tile
-                if check_B_in_B(tile):
-                    # print(f"Tile {row}_{col} is a black piece.")
-                    blacks += 1
-                    chessboard_matrix[row, col] = 2
-                elif check_W_in_B(tile):
-                    # print(f"Tile {row}_{col} is a white piece.")
-                    whites += 1
-                    chessboard_matrix[row, col] = 1
-            else:  # White tile
-                if check_W_in_W(tile):
-                    # print(f"Tile {row}_{col} is a white piece.")
-                    whites += 1
-                    chessboard_matrix[row, col] = 1
-                elif check_B_in_W(tile):
-                    # print(f"Tile {row}_{col} is a black piece.")
-                    blacks += 1
-                    chessboard_matrix[row, col] = 2
+            
+            if circle is not None and circle.size > 0:
+                circle = np.uint16(np.around(circle))
+
+                for i in circle[0,:]:
+                    width, height, _ = tile.shape
+                    (ix, iy) = width // 2, height // 2
+                    cx, cy, r = int(i[0]), int(i[1]), int(i[2])
+                    
+                    if(abs(cx - ix) <= 5 and abs(cy - iy) <= 5):
+                        crop = grey[(cy-r):(cy+r), (cx - r):(cx + r)]
+
+                        mean_intensity = np.mean(crop)
+                        if mean_intensity > 100:
+                            whites += 1
+                            chessboard_matrix[row, col] = 1
+                        else:
+                            blacks += 1
+                            chessboard_matrix[row, col] = 2
 
     # save results
     data["metadata"][totalBlackFieldName] = blacks
