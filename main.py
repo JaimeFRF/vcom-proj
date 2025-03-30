@@ -55,7 +55,7 @@ squares_pipeline = SquaresProcessing([
 #separate small pipeline for the horse reference image, and the results will be merged with the main pipeline, in the rotation pipeline part
 separate_horse_pipeline = RotationProcessing([
     convert_to_gray,
-    gaussian3,
+    partial(gaussian, ksize=(3, 3)),
     #equalizeHist,
     clahe,
     partial(save_image_dimensions_in_metadata, widthFieldTitle="horse_width", heightFieldTitle="horse_height"), # save this data to be used to calculate the homography in the rotate_pipeline
@@ -67,7 +67,7 @@ separate_horse_pipeline = RotationProcessing([
 rotate_pipeline = RotationProcessing([
     # partial(show_current_image, imageTitle="Warped Image"),
     convert_to_gray,
-    gaussian3,
+    partial(gaussian, ksize=(3,3)),
     #equalizeHist,
     clahe,
     sift,
