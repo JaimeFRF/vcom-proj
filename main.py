@@ -55,6 +55,7 @@ squares_pipeline = SquaresProcessing([
 #separate small pipeline for the horse reference image, and the results will be merged with the main pipeline, in the rotation pipeline part
 separate_horse_pipeline = RotationProcessing([
     convert_to_gray,
+    gaussian,
     equalizeHist,
     partial(save_image_dimensions_in_metadata, widthFieldTitle="horse_width", heightFieldTitle="horse_height"), # save this data to be used to calculate the homography in the rotate_pipeline
     partial(sift, keypointsFieldTitle="horse_keypoints", descriptorsFieldTitle="horse_descriptors"), # store calculated keypoints and descriptors in metadata fields, accessible by other functions in the main pipeline
@@ -65,11 +66,12 @@ separate_horse_pipeline = RotationProcessing([
 rotate_pipeline = RotationProcessing([
     # partial(show_current_image, imageTitle="Warped Image"),
     convert_to_gray,
+    gaussian,
     equalizeHist,
     sift,
     partial(flann_matcher, descriptors1="horse_descriptors"),
     partial(find_homography_from_matches, keypoints1="horse_keypoints"),
-    # partial(draw_perspective_transformed_points, widthTitle="horse_width", heightTitle="horse_height"),
+    partial(draw_perspective_transformed_points, widthTitle="horse_width", heightTitle="horse_height"),
     # draw_crosshair,
     partial(set_current_image, imageFieldName="warped_image"), # set the current image to the previous warped image, to recover colors, before rotation
     rotate_img_from_homography,
@@ -90,6 +92,7 @@ squares_results = squares_pipeline.apply(pre_proc_imgs)
 
 # separate processing pipeline for the single horse image used for rotation. The metadata created here will be merged with the main pipeline results, so we can acess keypoints and descriptors from main pipeline
 separate_horse_results = separate_horse_pipeline.apply(read_single_image("our_images/cavalinhoPequeno.jpg"))[0]
+
 
 squares_and_horse_results = MetadataMerger.merge_pipelines_metadata(squares_results, separate_horse_results)
 rotate_results = rotate_pipeline.apply(squares_and_horse_results)

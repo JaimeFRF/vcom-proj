@@ -24,8 +24,8 @@ def flann_matcher(data, descriptors1, descriptors2="descriptors", matchesTitle="
     # Store all matches (taking the best match from each pair)
     good = []
     for m, n in matches:
-        if m.distance < 0.8 * n.distance:
-            good.append(m)
+        #if m.distance < 0.9 * n.distance:
+        good.append(m)
 
     data["metadata"][matchesTitle] = good
     return data
@@ -48,7 +48,7 @@ def find_homography_from_matches(data, keypoints1, keypoints2="keypoints", match
     train_pts = np.float32([kp2[m.trainIdx].pt for m in matches]).reshape(-1, 1, 2)  # img2
 
     # Find homography from query (img1) to train (img2)
-    M, mask = cv2.findHomography(query_pts, train_pts, cv2.RANSAC, 5.0)
+    M, mask = cv2.findHomography(query_pts, train_pts, cv2.RANSAC, 1.0)
 
     data["metadata"][homographyTitle_result] = M
     return data
