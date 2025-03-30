@@ -23,6 +23,16 @@ def read_single_image(path):
     
     return img_dict
 
+def read_results():
+    data = json.load(open("tests/solutions.json"))
+    solutions_dict = [{
+        "name" : i["name"],
+        "pieces": i["pieces"],
+        "black_pieces" : i["black_pieces"],
+        "white_pieces": i["white_pieces"]
+    } for i in data]
+    return solutions_dict
+
 #TODO
 def write_results():
     return 0

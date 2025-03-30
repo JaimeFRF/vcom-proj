@@ -2,6 +2,7 @@ from functools import partial
 from utils.metadataMerger import MetadataMerger
 from utils.utils import *
 from IO.json_handler import *
+from tests.test_implementation import *
 
 from preProcessing.functions import *
 import preProcessing.parameters as preProcParams
@@ -100,3 +101,4 @@ squares_and_horse_results = MetadataMerger.merge_pipelines_metadata(squares_resu
 rotate_results = rotate_pipeline.apply(squares_and_horse_results)
 single_square_results = single_squares_pipeline.apply(rotate_results)
 show_images(single_square_results)
+test_implementation(single_square_results)
