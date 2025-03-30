@@ -106,7 +106,7 @@ def calculate_matrix_representation(data, squaresListName="squares_list", matrix
                     (ix, iy) = width // 2, height // 2
                     cx, cy, r = int(i[0]), int(i[1]), int(i[2])
                     
-                    if(abs(cx - ix) <= 5 and abs(cy - iy) <= 5):
+                    if(abs(cx - ix) <= 10 and abs(cy - iy) <= 10):
                         crop = grey[(cy-r):(cy+r), (cx - r):(cx + r)]
 
                         mean_intensity = np.mean(crop)
