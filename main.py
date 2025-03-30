@@ -55,8 +55,9 @@ squares_pipeline = SquaresProcessing([
 #separate small pipeline for the horse reference image, and the results will be merged with the main pipeline, in the rotation pipeline part
 separate_horse_pipeline = RotationProcessing([
     convert_to_gray,
-    gaussian,
-    equalizeHist,
+    gaussian3,
+    #equalizeHist,
+    clahe,
     partial(save_image_dimensions_in_metadata, widthFieldTitle="horse_width", heightFieldTitle="horse_height"), # save this data to be used to calculate the homography in the rotate_pipeline
     partial(sift, keypointsFieldTitle="horse_keypoints", descriptorsFieldTitle="horse_descriptors"), # store calculated keypoints and descriptors in metadata fields, accessible by other functions in the main pipeline
     # partial(show_current_image, imageTitle="Query Image")
@@ -66,8 +67,9 @@ separate_horse_pipeline = RotationProcessing([
 rotate_pipeline = RotationProcessing([
     # partial(show_current_image, imageTitle="Warped Image"),
     convert_to_gray,
-    gaussian,
-    equalizeHist,
+    gaussian3,
+    #equalizeHist,
+    clahe,
     sift,
     partial(flann_matcher, descriptors1="horse_descriptors"),
     partial(find_homography_from_matches, keypoints1="horse_keypoints"),

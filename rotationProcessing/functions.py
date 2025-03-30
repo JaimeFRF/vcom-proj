@@ -48,7 +48,7 @@ def find_homography_from_matches(data, keypoints1, keypoints2="keypoints", match
     train_pts = np.float32([kp2[m.trainIdx].pt for m in matches]).reshape(-1, 1, 2)  # img2
 
     # Find homography from query (img1) to train (img2)
-    M, mask = cv2.findHomography(query_pts, train_pts, cv2.RANSAC, 1.0)
+    M, mask = cv2.findHomography(query_pts, train_pts, cv2.RANSAC, 2.0)
 
     data["metadata"][homographyTitle_result] = M
     return data

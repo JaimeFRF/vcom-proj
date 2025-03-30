@@ -7,6 +7,30 @@ def gaussian(data, ksize =(5, 5)):
     data["image"] = cv2.GaussianBlur(data["image"], ksize, 0)
     return data
 
+
+def gaussian3(data, ksize =(3, 3)):
+    data["image"] = cv2.GaussianBlur(data["image"], ksize, 0)
+    return data
+
+def gaussian6(data, ksize =(6, 6)):
+    data["image"] = cv2.GaussianBlur(data["image"], ksize, 0)
+    return data
+
+def gaussian7(data, ksize =(7, 7)):
+    data["image"] = cv2.GaussianBlur(data["image"], ksize, 0)
+    return data
+
+def gaussian9(data, ksize =(9, 9)):
+    data["image"] = cv2.GaussianBlur(data["image"], ksize, 0)
+    return data
+
+def clahe(data, clipLimit=2.0, tileGridSize=(8, 8)):
+    clahe = cv2.createCLAHE(clipLimit=clipLimit, tileGridSize=tileGridSize)
+    data["image"] = clahe.apply(data["image"])
+    return data
+
+
+
 def median(data, ksize = 5):
     data["image"] = cv2.medianBlur(data["image"], ksize)
     return data
