@@ -8,7 +8,7 @@ def gaussian(data, ksize =(5, 5)):
     return data
 
 
-def clahe(data, clipLimit=2.0, tileGridSize=(8, 8)):
+def clahe(data, clipLimit=2.0, tileGridSize=(10, 10)):
     clahe = cv2.createCLAHE(clipLimit=clipLimit, tileGridSize=tileGridSize)
     data["image"] = clahe.apply(data["image"])
     return data
