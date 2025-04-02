@@ -26,7 +26,7 @@ def separate_squares(data, squareFieldName="squares_list", save_tiles=False):
         os.makedirs(Parameters.tiles_save_dir, exist_ok=True)
 
     # extract each tile
-    for j in range(8):
+    for j in range(7, -1 , -1):
         for i in range(8):
             
             # Extract the tile
