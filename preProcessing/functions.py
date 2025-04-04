@@ -46,8 +46,8 @@ def table_segmentation(data, lower_color_bound=(150,100,50), upper_color_bound=(
     hsv = cv2.cvtColor(data["orig_img"], cv2.COLOR_BGR2HSV)
     
     # assuming board is always in a table with orangeish colors, filter out the rest of the image that isn't part of the table
-    lower_bound = np.array([0, 0, 100])
-    upper_bound = np.array([180, 50, 255])
+    lower_bound = np.array(list(lower_color_bound))
+    upper_bound = np.array(list(upper_color_bound))
     
     # Create a mask for the board
     mask = cv2.inRange(hsv, lower_bound, upper_bound)

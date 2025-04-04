@@ -94,7 +94,7 @@ def find_board_countour_and_corners(data, approxPolyDP_epsilon=0.05, min_perim=1
         # source https://docs.opencv.org/3.4/dd/d49/tutorial_py_contour_features.html
         hull = cv2.convexHull(contour) # convex hull surrounding contour
         peri = cv2.arcLength(hull, True) # perimeter of the contour
-        approx = cv2.approxPolyDP(contour, approxPolyDP_epsilon * peri, True)  # simplify countour # higher epsilon -> less vertices -> better board shape approximation
+        approx = cv2.approxPolyDP(hull, approxPolyDP_epsilon * peri, True)  # simplify countour # higher epsilon -> less vertices -> better board shape approximation
         
         #TODO: conseguir separar background de foreground, para poder filtrar depois o contour especifico da board
         #TODO:filtrar contours by solidity -> meansure of how much the contour occupies the convex hull, to guarantee is polygon shaped
@@ -143,7 +143,7 @@ def find_board_countour_and_corners_2(data, approxPolyDP_epsilon=0.05, min_perim
         cv2.imshow("contour", contoured_img)
 
         # https://docs.opencv.org/3.4/dd/d49/tutorial_py_contour_features.html
-        approx = cv2.approxPolyDP(contour, approxPolyDP_epsilon * peri, True)  # simplify countour # higher epsilon -> less vertices -> better board shape approximation
+        approx = cv2.approxPolyDP(hull, approxPolyDP_epsilon * peri, True)  # simplify countour # higher epsilon -> less vertices -> better board shape approximation
         
         #debug temp
         contoured_img = cv2.drawContours(data["orig_img"].copy(), [approx], -1, (255, 0, 255), 3)
