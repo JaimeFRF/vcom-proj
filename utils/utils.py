@@ -1,8 +1,13 @@
+import sys
 import cv2
 import math
 import random
 import numpy as np
-import os
+import matplotlib.pyplot as plt 
+import cv2
+from PyQt5.QtWidgets import QApplication, QMainWindow, QScrollArea, QWidget, QVBoxLayout
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+from datetime import datetime
 
 #Colors
 color_red = (0,0,255)
@@ -21,14 +26,60 @@ def wait_for_exit():
 def show_images(imgs_data, size=(500, 500)):
     for i in imgs_data:
         cv2.imshow(f"final_{i['name']}", cv2.resize(i["image"], size))
-
     wait_for_exit()
+
+def show_debug_images(imgs_data, gridFormat=False, gridImgSize=2, gridSaveFig=False, initialSize=(1200,700)):
+    if gridFormat:
+        imgs_count = len(imgs_data) # total number of images processed 
+        debug_img_count = len(imgs_data[0]["debug"]) # number of debug images processed for each chessboard image
+        
+        fig, axs = plt.subplots(imgs_count, debug_img_count, figsize=(gridImgSize * debug_img_count, gridImgSize * imgs_count), num=f"Debug")
+        
+        for img_id, data in enumerate(imgs_data):
+            for i, img in enumerate(data["debug"]):
+                axs[img_id][i].imshow(cv2.cvtColor(img["image"], cv2.COLOR_BGR2RGB))
+                axs[img_id][i].set_title(img["name"], size=3*gridImgSize)
+                axs[img_id][i].axis("off")
+
+        fig.tight_layout()
+
+        if (gridSaveFig):
+            fig_path = f"our_images/debug/debug_images_{datetime.now().strftime('%H_%M_%S')}.png"
+            fig.savefig(fig_path, dpi=300, bbox_inches='tight')
+            print(f"Debug images saved as {fig_path}")
+        
+        # Display the figure in a scrollable Qt window
+        display_scrollable_figure(fig, title="Debug Images", initial_size=initialSize)
+
+        plt.close(fig)
+
+
+    else:
+        for img in data["debug"]:
+            cv2.imshow(img["name"], img["image"])
+        wait_for_exit()
 
 # helper function to show an image and add the original image name to the window title. Used for debug draw functions,
 # this way, different images aren't overwriting the same named window throughout the pipeline (which would only make imshow windows visible for the last image in pipeline)
+# so its less messy when debugging multiple chessboard images, we combine all images into a single window
 def show_image_with_name(data, imageTitle, image):
     image_window_name = f"{imageTitle}_{data['name']}"
-    cv2.imshow(image_window_name, image)
+    data["debug"].append({"name": image_window_name, "image": image}) # add image to debug list
+    # cv2.imshow(image_window_name, image)
+    return data
+
+def draw_points(data, color=color_green, radius=3, thickness=2, imageTitle="Points", pointsFieldName="keypoints"):
+    points = data["metadata"].get(pointsFieldName, None) # points data from previous function in pipeline
+    if (points is None):
+        raise ValueError(f"{pointsFieldName} data must be defined previously in pipeline, in order to draw points")
+    
+    img = data["image"].copy()
+
+    for point in points:
+        x, y = point.pt
+        img = cv2.circle(img, (int(x), int(y)), radius, color, thickness)
+
+    show_image_with_name(data, imageTitle, img)
     return data
 
 # draw hough lines over original image
@@ -63,8 +114,8 @@ def draw_hough_lines(data, color=color_red, withText=False, textSize=1.5, houghL
     return data
 
 #draw chessboard calculated countours over original image
-def draw_contours(data, imageTitle="Contours", color=color_green, thickness=3, fieldName="contours"):
-    contours = data["metadata"].get(fieldName, None) # contours data from previous function in pipeline
+def draw_contours(data, imageTitle="Contours", color=color_green, thickness=3, contoursFieldName="board_contour"):
+    contours = data["metadata"].get(contoursFieldName, None) # contours data from previous function in pipeline
     if (contours is None):
         raise ValueError("Contours data must be defined previously in pipeline, in order to draw contours")
     
@@ -197,3 +248,39 @@ def print_field_value(data, fieldName, withFieldName=False, withNewline=False):
         field_string += "\n"
     print(f"{field_string}{value}")
     return data
+
+# make a matplotlib figure scrollable in a Qt window, so any figure size can be analyzed
+def display_scrollable_figure(fig, title="Debug", initial_size=(700, 500)):
+
+    # Ensure a QApplication instance exists
+    app = QApplication.instance()
+    if app is None:
+        app = QApplication(sys.argv)
+
+    # Create the main window
+    window = QMainWindow()
+    window.setWindowTitle(title)
+    window.resize(*initial_size)
+
+    # Create a widget and layout for the figure
+    central_widget = QWidget()
+    layout = QVBoxLayout(central_widget)
+
+    # Create a canvas for the matplotlib figure
+    canvas = FigureCanvas(fig)
+    canvas.setMinimumSize(canvas.size())  # Prevent shrinking
+
+    # Add the canvas to a scroll area
+    scroll_area = QScrollArea()
+    scroll_area.setWidget(canvas)
+    scroll_area.setWidgetResizable(False)  # Prevent resizing the canvas to fit
+
+    # Add the scroll area to the layout
+    layout.addWidget(scroll_area)
+    window.setCentralWidget(central_widget)
+
+    # Show the window
+    # blocks until window is closed
+    window.show()
+
+    app.exec_()

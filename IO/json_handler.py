@@ -7,6 +7,7 @@ def read_images():
         "name": i, 
         "orig_img": cv2.imread("images/{name}".format(name=i)), # this one is to keep the original image
         "image": cv2.imread("images/{name}".format(name=i)), # this one is to apply the operations 
+        "debug": [], # store debug images here, to print at the end in a single window
         "metadata": {}
         } 
     for i in data["images"]]
@@ -18,6 +19,7 @@ def read_single_image(path):
         "name": path,
         "orig_img": orig_img,
         "image": orig_img,
+        "debug": [],
         "metadata": {}
     }]
     

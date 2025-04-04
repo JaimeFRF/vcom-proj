@@ -4,13 +4,14 @@ import math
 import numpy as np
 
 ## Module for functions related to rotating the board to the correct position, based on the little horse in the corner
+sift_starter = cv2.SIFT_create()
 
 # apply sift, to detect feature keypoints and compute their descriptors
 def sift(data, keypointsFieldTitle="keypoints", descriptorsFieldTitle="descriptors"):
-    sift = cv2.SIFT_create()
-    keypoints, descriptors = sift.detectAndCompute(data["image"], None)
+    keypoints, descriptors = sift_starter.detectAndCompute(data["image"], None)
     data["metadata"][keypointsFieldTitle] = keypoints
     data["metadata"][descriptorsFieldTitle] = descriptors
+
     return data
 
 # aplly flann_matcher to match feature descriptors between two images
@@ -31,8 +32,8 @@ def flann_matcher(data, descriptors1, descriptors2="descriptors", matchesTitle="
 def find_homography_from_matches(data, keypoints1, keypoints2="keypoints", matchesTitle="matches", homographyTitle_result="homography"):
     
     matches = data["metadata"].get(matchesTitle,None)
-    kp1 = data["metadata"].get(keypoints1, None)
-    kp2 = data["metadata"].get(keypoints2, None)
+    kp1 = data["metadata"].get(keypoints1, None) #cavalinho
+    kp2 = data["metadata"].get(keypoints2, None) #imagem pipeline
 
     if (matches is None or kp1 is None or kp2 is None):
         raise ValueError("Matches and keypoints must be defined previously in pipeline, to find homography")
@@ -49,7 +50,6 @@ def find_homography_from_matches(data, keypoints1, keypoints2="keypoints", match
 
     data["metadata"][homographyTitle_result] = M
     return data
-
 
 # given a homography matrix, extract the rotation angle, fixed to 0, 90, 180 or 270 degrees
 def extract_rotation_from_homography(data, homographyTitle="homography"):

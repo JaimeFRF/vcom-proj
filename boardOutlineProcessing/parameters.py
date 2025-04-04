@@ -12,7 +12,12 @@ dilate_iterations = 1
 closing_ksize = (7, 7)
 closing_iterations = 3
 
+#opening image
+opening_ksize = (3, 3)
+opening_iterations = 1
+
 #find_board_contour_and_corners
+min_board_perimeter = 5000
 approxPolyDP_epsilon = 0.05 # higher epsilon -> less vertices -> better board shape approximation to a square
 
 # warp image
