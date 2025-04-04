@@ -52,7 +52,7 @@ board_outline_pipeline = BoardOutlineProcessing([
     partial(warp_image_from_board_corners, warp_width=boardOutParams.warp_width, warp_height=boardOutParams.warp_height),
     # partial(hough_lines, rho=boardOutParams.hough_rho, theta=boardOutParams.hough_theta, votes=boardOutParams.hough_votes),
     # partial(draw_hough_lines, color=Utils.color_red, withText=False)
-    # partial(show_current_image, imageTitle="Warped final pipeline image"),
+    partial(show_current_image, imageTitle="Warped final pipeline image"),
     partial(save_current_image_in_metadata, fieldName="warped_image"), # save image to metadata to be reused later
 ])
 
@@ -79,7 +79,7 @@ rotate_pipeline = RotationProcessing([
     # partial(draw_points, imageTitle="Keypoints_main"),
     partial(flann_matcher, descriptors1="horse_descriptors"),
     partial(find_homography_from_matches, keypoints1="horse_keypoints"),
-    partial(draw_perspective_transformed_points, widthTitle="horse_width", heightTitle="horse_height"),
+    #partial(draw_perspective_transformed_points, widthTitle="horse_width", heightTitle="horse_height"),
     # draw_crosshair,
     partial(set_current_image, imageFieldName="warped_image"), # set the current image to the previous warped image, to recover colors, before rotation
     rotate_img_from_homography,
@@ -88,6 +88,7 @@ rotate_pipeline = RotationProcessing([
 #extract the single squares from the board, and classify them
 single_squares_pipeline = SingleSquaresProcessing([
     cut_corners,
+    draw_grid,
     separate_squares,
     calculate_matrix_representation,
     partial(print_field_value, fieldName="chessboard_matrix"),
@@ -98,13 +99,14 @@ single_squares_pipeline = SingleSquaresProcessing([
 pre_proc_imgs = pp_pipeline.apply(read_images())
 squares_results = board_outline_pipeline.apply(pre_proc_imgs)
 
+separate_horse_results = separate_horse_pipeline.apply(read_single_image("our_images/cavalinhoPequeno.jpg"))[0]
+
+squares_and_horse_results = MetadataMerger.merge_pipelines_metadata(squares_results, separate_horse_results)
+rotate_results = rotate_pipeline.apply(squares_and_horse_results)
+single_square_results = single_squares_pipeline.apply(rotate_results)
+
+test_implementation(single_square_results)
 show_debug_images(squares_results, gridFormat=True, gridImgSize=3, gridSaveFig=False)
 # show_images(squares_results)
 # separate processing pipeline for the single horse image used for rotation. The metadata created here will be merged with the main pipeline results, so we can acess keypoints and descriptors of the horse in main pipeline
-# separate_horse_results = separate_horse_pipeline.apply(read_single_image("our_images/cavalinhoPequeno.jpg"))[0]
-
-# squares_and_horse_results = MetadataMerger.merge_pipelines_metadata(squares_results, separate_horse_results)
-# rotate_results = rotate_pipeline.apply(squares_and_horse_results)
-# single_square_results = single_squares_pipeline.apply(rotate_results)
-# show_images(squares_results)
-# test_implementation(single_square_results)
+#show_images(squares_results)
