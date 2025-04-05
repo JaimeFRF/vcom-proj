@@ -31,8 +31,7 @@ from singleSquaresProcessing.singleSquaresProcessing import SingleSquaresProcess
 # NOTE: also, sometimes we have to proecss images separately from the main pipeline, like the little horse image, so we have a separate pipeline for that, and then merge the metadata with the main pipeline
 
 pp_pipeline = PreProcessing([
-    # table_segmentation,
-    # partial(show_current_image, imageTitle="Prepocessed", resizeAmount=0.25),
+    partial(color_mask,lower_color_bound=preProcParams.lower_color_bound, upper_color_bound=preProcParams.upper_color_bound, mask_edges_erosion=preProcParams.mask_edges_erosion),
     convert_to_gray,
     partial(bilateral, ksize=preProcParams.bilateral_ksize, sigmaColor=preProcParams.bilateral_sigmaColor, sigmaSpace=preProcParams.bilateral_sigmaSpace), # reduce noise, keeping edges sharp
 ])
@@ -41,6 +40,8 @@ pp_pipeline = PreProcessing([
 board_outline_pipeline = BoardOutlineProcessing([
     partial(canny, low=boardOutParams.canny_low_threshold, high=boardOutParams.canny_high_threshold), 
     partial(show_current_image, imageTitle="Canny Edges", resizeAmount=0.25),
+    apply_mask,
+    partial(show_current_image, imageTitle="Masked", resizeAmount=0.25),
     partial(dilate_edges, ksize=boardOutParams.dilate_ksize, iterations=boardOutParams.dilate_iterations),
     partial(show_current_image, imageTitle="Canny Dilated", resizeAmount=0.25),
     partial(closing, ksize=boardOutParams.closing_ksize, iterations=boardOutParams.closing_iterations),
@@ -98,13 +99,14 @@ single_squares_pipeline = SingleSquaresProcessing([
 pre_proc_imgs = pp_pipeline.apply(read_images())
 squares_results = board_outline_pipeline.apply(pre_proc_imgs)
 
-show_debug_images(squares_results, gridFormat=True, gridImgSize=3, gridSaveFig=False)
-# show_images(squares_results)
-# separate processing pipeline for the single horse image used for rotation. The metadata created here will be merged with the main pipeline results, so we can acess keypoints and descriptors of the horse in main pipeline
-# separate_horse_results = separate_horse_pipeline.apply(read_single_image("our_images/cavalinhoPequeno.jpg"))[0]
 
-# squares_and_horse_results = MetadataMerger.merge_pipelines_metadata(squares_results, separate_horse_results)
-# rotate_results = rotate_pipeline.apply(squares_and_horse_results)
-# single_square_results = single_squares_pipeline.apply(rotate_results)
+# separate processing pipeline for the single horse image used for rotation. The metadata created here will be merged with the main pipeline results, so we can acess keypoints and descriptors of the horse in main pipeline
+separate_horse_results = separate_horse_pipeline.apply(read_single_image("our_images/cavalinhoPequeno.jpg"))[0]
+
+squares_and_horse_results = MetadataMerger.merge_pipelines_metadata(squares_results, separate_horse_results)
+rotate_results = rotate_pipeline.apply(squares_and_horse_results)
+single_square_results = single_squares_pipeline.apply(rotate_results)
+
+show_debug_images(single_square_results, gridFormat=True, gridImgSize=5, gridSaveFig=False)
 # show_images(squares_results)
 # test_implementation(single_square_results)

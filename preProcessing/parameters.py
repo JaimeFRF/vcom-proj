@@ -1,5 +1,10 @@
 import math
 
+#color mask
+lower_color_bound = (10, 50, 60) # lower bound for table color in HSV
+upper_color_bound = (20, 255, 255) # upper bound for table color in HSV
+mask_edges_erosion = 10 # how much to shrink the final mask edges. higher value -> shrinking mask, from the edges to the center (useful for ignoring the background as well as the tables edges in canny)
+
 #gaussian filter
 gaussian_ksize = (5, 5)
 
