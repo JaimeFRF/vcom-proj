@@ -114,12 +114,12 @@ def draw_hough_lines(data, color=color_red, withText=False, textSize=1.5, houghL
     return data
 
 #draw chessboard calculated countours over original image
-def draw_contours(data, imageTitle="Contours", color=color_green, thickness=3, contoursFieldName="board_contour"):
+def draw_contours(data, imageTitle="Contours", color=color_green, thickness=3, contoursFieldName="board_contour", imgName="orig_img"):
     contours = data["metadata"].get(contoursFieldName, None) # contours data from previous function in pipeline
     if (contours is None):
         raise ValueError("Contours data must be defined previously in pipeline, in order to draw contours")
     
-    img = data["orig_img"].copy()
+    img = data[imgName].copy()
     img = cv2.drawContours(img, contours, -1, color, thickness)
     show_image_with_name(data, imageTitle, img)
     return data
@@ -127,6 +127,11 @@ def draw_contours(data, imageTitle="Contours", color=color_green, thickness=3, c
 # print a single image during pipeline
 def show_current_image(data, imageTitle="current image", resizeAmount=1):
     resize_img = cv2.resize(data["image"], (0, 0), fx=resizeAmount, fy=resizeAmount)
+    show_image_with_name(data, imageTitle, resize_img)
+    return data
+
+def show_metadata_image(data, imageTitle="specified image", resizeAmount=1, imageName=""):
+    resize_img = cv2.resize(data["metadata"][imageName], (0, 0), fx=resizeAmount, fy=resizeAmount)
     show_image_with_name(data, imageTitle, resize_img)
     return data
 

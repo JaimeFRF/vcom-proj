@@ -11,12 +11,10 @@ from boardOutlineProcessing.functions import *
 import boardOutlineProcessing.parameters as boardOutParams
 from boardOutlineProcessing.boardOutlineProcessing import BoardOutlineProcessing
 from rotationProcessing.functions import *
-import rotationProcessing.parameters as rotParams
 from rotationProcessing.rotationProcessing import RotationProcessing
 from singleSquaresProcessing.functions import *
-import singleSquaresProcessing.parameters as singleParams
 from singleSquaresProcessing.singleSquaresProcessing import SingleSquaresProcessing
-
+from densityProcessing.densityProcessing import *
 
 ## Pipeline Design Pattern -> Só é preciso meter as funções/ordem etc que queremos
 # NOTE: if you want to specify certain attributes in pipeline do partial(func_name, arg1=value1, arg2=value2,...)
@@ -48,7 +46,6 @@ board_outline_pipeline = BoardOutlineProcessing([
     partial(show_current_image, imageTitle="Canny Dilated Closed", resizeAmount=0.25),
     partial(find_board_countour_and_corners, approxPolyDP_epsilon=boardOutParams.approxPolyDP_epsilon),
     # partial(find_board_countour_and_corners_2, approxPolyDP_epsilon=boardOutParams.approxPolyDP_epsilon),
-
     partial(draw_contours, imageTitle="Original with Countors"),
     partial(warp_image_from_board_corners, warp_width=boardOutParams.warp_width, warp_height=boardOutParams.warp_height),
     # partial(hough_lines, rho=boardOutParams.hough_rho, theta=boardOutParams.hough_theta, votes=boardOutParams.hough_votes),
@@ -84,16 +81,29 @@ rotate_pipeline = RotationProcessing([
     # draw_crosshair,
     partial(set_current_image, imageFieldName="warped_image"), # set the current image to the previous warped image, to recover colors, before rotation
     rotate_img_from_homography,
+    partial(save_current_image_in_metadata, fieldName="warpedRotated")
+])
+
+density_pipeline = DensityProcessing([
+    partial(show_current_image, imageTitle="Image before density"),
+    convert_to_gray,
+    partial(gaussian, ksize=(5,5)),
+    partial(canny, low=100, high=200), 
+    hough_lines,
+    draw_hough_lines_on_warped_image,
+    calculate_corners,
+    partial(set_current_image, imageFieldName="warpedRotated"), 
+    partial(show_metadata_image, imageTitle="Hough lines on warped image", imageName="line_map"),
+    partial(draw_contours, imageTitle="Warped with countours from density", imgName="image"),
+    partial(warp_image_from_board_corners, imgFieldName = "image", warp_width=boardOutParams.warp_width, warp_height=boardOutParams.warp_height),
+    partial(show_current_image, imageTitle="Warped final pipeline image"),
 ])
 
 #extract the single squares from the board, and classify them
 single_squares_pipeline = SingleSquaresProcessing([
-    cut_corners,
+    convert_to_gray,
     separate_squares,
-    calculate_matrix_representation,
-    partial(print_field_value, fieldName="chessboard_matrix"),
-    partial(print_field_value, fieldName="total_black", withFieldName=True),
-    partial(print_field_value, fieldName="total_white", withFieldName=True)
+    calculate_matrix_representation
 ])
 
 pre_proc_imgs = pp_pipeline.apply(read_images())
@@ -105,8 +115,9 @@ separate_horse_results = separate_horse_pipeline.apply(read_single_image("our_im
 
 squares_and_horse_results = MetadataMerger.merge_pipelines_metadata(squares_results, separate_horse_results)
 rotate_results = rotate_pipeline.apply(squares_and_horse_results)
-single_square_results = single_squares_pipeline.apply(rotate_results)
+density_results = density_pipeline.apply(rotate_results)
+single_square_results = single_squares_pipeline.apply(density_results)
 
-show_debug_images(single_square_results, gridFormat=True, gridImgSize=5, gridSaveFig=False)
+show_debug_images(rotate_results, gridFormat=True, gridImgSize=5, gridSaveFig=False)
 # show_images(squares_results)
 # test_implementation(single_square_results)

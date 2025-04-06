@@ -1,6 +1,5 @@
 import cv2
 import utils.utils as Utils
-import math
 import singleSquaresProcessing.parameters as Parameters
 import numpy as np
 import os
@@ -91,10 +90,8 @@ def calculate_matrix_representation(data, squaresListName="squares_list", matrix
     chessboard_matrix = np.zeros((8, 8), dtype=int)
 
     for i, tile in enumerate(squares_list):
-            grey = cv2.cvtColor(tile, cv2.COLOR_BGR2GRAY)
-
             # TODO: Tunar esta situação
-            circle = cv2.HoughCircles(grey, cv2.HOUGH_GRADIENT, 1,20, param1=50,param2=25,minRadius=0,maxRadius=0)
+            circle = cv2.HoughCircles(tile, cv2.HOUGH_GRADIENT, 1,20, param1=50,param2=25,minRadius=0,maxRadius=0)
             row = i // 8
             col = i % 8
             
@@ -102,12 +99,17 @@ def calculate_matrix_representation(data, squaresListName="squares_list", matrix
                 circle = np.uint16(np.around(circle))
 
                 for i in circle[0,:]:
-                    width, height, _ = tile.shape
+                    width, height = tile.shape
                     (ix, iy) = width // 2, height // 2
                     cx, cy, r = int(i[0]), int(i[1]), int(i[2])
                     
                     if(abs(cx - ix) <= 10 and abs(cy - iy) <= 10):
-                        crop = grey[(cy-r):(cy+r), (cx - r):(cx + r)]
+                        x1 = max(cx - r, 0)
+                        x2 = min(cx + r, width)
+                        y1 = max(cy - r, 0)
+                        y2 = min(cy + r, height)
+
+                        crop = tile[(y1):(y2), (x1):(x2)]
 
                         mean_intensity = np.mean(crop)
                         if mean_intensity > 100:
@@ -122,7 +124,7 @@ def calculate_matrix_representation(data, squaresListName="squares_list", matrix
     data["metadata"][totalWhiteFieldName] = whites
     data["metadata"][matrixFieldName] = chessboard_matrix
 
-    print("Chessboard Matrix (1 for white piece, 2 for black piece, 0 for empty)")
+    #print("Chessboard Matrix (1 for white piece, 2 for black piece, 0 for empty)")
 
     return data
 
