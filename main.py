@@ -15,6 +15,7 @@ from rotationProcessing.rotationProcessing import RotationProcessing
 from singleSquaresProcessing.functions import *
 from singleSquaresProcessing.singleSquaresProcessing import SingleSquaresProcessing
 from densityProcessing.densityProcessing import *
+from densityProcessing.functions import *
 
 ## Pipeline Design Pattern -> Só é preciso meter as funções/ordem etc que queremos
 # NOTE: if you want to specify certain attributes in pipeline do partial(func_name, arg1=value1, arg2=value2,...)
@@ -120,4 +121,4 @@ single_square_results = single_squares_pipeline.apply(density_results)
 
 show_debug_images(rotate_results, gridFormat=True, gridImgSize=5, gridSaveFig=False)
 # show_images(squares_results)
-# test_implementation(single_square_results)
+test_implementation(single_square_results)
