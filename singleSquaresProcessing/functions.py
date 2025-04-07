@@ -122,7 +122,7 @@ def calculate_matrix_representation(data, squaresListName="squares_list", matrix
     data["metadata"][totalWhiteFieldName] = whites
     data["metadata"][matrixFieldName] = chessboard_matrix
 
-    print("Chessboard Matrix (1 for white piece, 2 for black piece, 0 for empty)")
+    #print("Chessboard Matrix (1 for white piece, 2 for black piece, 0 for empty)")
 
     return data
 

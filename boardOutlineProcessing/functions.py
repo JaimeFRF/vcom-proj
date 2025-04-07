@@ -1,8 +1,7 @@
 import cv2
-import boardOutlineProcessing.parameters as BoardOutlineProcParams
-import utils.utils as Utils
 import math
 import numpy as np
+from sklearn.cluster import KMeans
 
 ## Module for functions related to identifying the board layout, and warping it to have a straight grid perspective
 
@@ -107,6 +106,7 @@ def find_board_countour_and_corners(data, approxPolyDP_epsilon=0.05, min_perim=1
             if area > max_area:
                 max_area = area
                 board_contour = approx # get the contour with the biggest area, cause the biggest square in the image is the board
+                best_contour = contour
                 
     if board_contour is None:
         raise ValueError("No game board detected.")
@@ -115,7 +115,43 @@ def find_board_countour_and_corners(data, approxPolyDP_epsilon=0.05, min_perim=1
 
     data["metadata"]["board_contour"] = [board_contour]
     data["metadata"]["board_corners"] = corners
+    data["metadata"]["best_contour"] = best_contour
 
+    return data
+
+
+def cluster_contours(data):
+    orig_img = data["metadata"]["line_img"]
+
+    gray = cv2.cvtColor(orig_img, cv2.COLOR_BGR2GRAY)
+    filtered = cv2.bilateralFilter(gray, 5, 75, 75)
+    lines = cv2.HoughLines(filtered, 1, math.pi / 180, 65)
+    points = []
+
+    if lines is not None:
+        lines_params = np.array([line[0] for line in lines])
+
+        kmeans = KMeans(n_clusters=4, random_state=0)
+        kmeans.fit(lines_params)
+
+        centroids = kmeans.cluster_centers_
+
+        for centroid in centroids:
+            rho, theta = centroid
+            a = np.cos(theta)
+            b = np.sin(theta)
+            x0 = a * rho
+            y0 = b * rho
+            x1 = int(x0 + 6000 * (-b))
+            y1 = int(y0 + 6000 * (a))
+            x2 = int(x0 - 6000 * (-b))
+            y2 = int(y0 - 6000 * (a))
+            cv2.line(orig_img, (x1, y1), (x2, y2), (0, 255, 0), 4)  
+            points.append([(x1,y1) , (x2,y2)])
+
+    print("The lines are ", points) 
+
+    data["metadata"]["clustered_img"] = orig_img
     return data
 
 # given a set of corners, warp the image to a new perspective

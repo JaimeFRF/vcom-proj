@@ -124,9 +124,24 @@ def draw_contours(data, imageTitle="Contours", color=color_green, thickness=3, c
     show_image_with_name(data, imageTitle, img)
     return data
 
+def draw_contour_blank_image(data):
+    height, width = data["orig_img"].shape[:2]
+    blank_image = np.zeros((height, width, 3), dtype=np.uint8)
+
+    contours = data["metadata"]["best_contour"]
+    blank_image = cv2.drawContours(blank_image, contours, -1 , (255, 0, 0), 1)
+    
+    data["metadata"]["line_img"] = blank_image
+    return data
+
 # print a single image during pipeline
 def show_current_image(data, imageTitle="current image", resizeAmount=1):
     resize_img = cv2.resize(data["image"], (0, 0), fx=resizeAmount, fy=resizeAmount)
+    show_image_with_name(data, imageTitle, resize_img)
+    return data
+
+def show_image_metadata(data, imageName, imageTitle="metadata image", resizeAmount=1):
+    resize_img = cv2.resize(data["metadata"][imageName], (0, 0), fx=resizeAmount, fy=resizeAmount)
     show_image_with_name(data, imageTitle, resize_img)
     return data
 

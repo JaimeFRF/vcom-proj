@@ -47,9 +47,10 @@ board_outline_pipeline = BoardOutlineProcessing([
     partial(closing, ksize=boardOutParams.closing_ksize, iterations=boardOutParams.closing_iterations),
     partial(show_current_image, imageTitle="Canny Dilated Closed", resizeAmount=0.25),
     partial(find_board_countour_and_corners, approxPolyDP_epsilon=boardOutParams.approxPolyDP_epsilon),
-    # partial(find_board_countour_and_corners_2, approxPolyDP_epsilon=boardOutParams.approxPolyDP_epsilon),
-
-    partial(draw_contours, imageTitle="Original with Countors"),
+    partial(draw_contour_blank_image),
+    partial(show_image_metadata, imageName="line_img", imageTitle="Before"),
+    cluster_contours,
+    partial(show_image_metadata, imageName="clustered_img", imageTitle="Clustered contours"),
     partial(warp_image_from_board_corners, warp_width=boardOutParams.warp_width, warp_height=boardOutParams.warp_height),
     # partial(hough_lines, rho=boardOutParams.hough_rho, theta=boardOutParams.hough_theta, votes=boardOutParams.hough_votes),
     # partial(draw_hough_lines, color=Utils.color_red, withText=False)
@@ -90,10 +91,7 @@ rotate_pipeline = RotationProcessing([
 single_squares_pipeline = SingleSquaresProcessing([
     cut_corners,
     separate_squares,
-    calculate_matrix_representation,
-    partial(print_field_value, fieldName="chessboard_matrix"),
-    partial(print_field_value, fieldName="total_black", withFieldName=True),
-    partial(print_field_value, fieldName="total_white", withFieldName=True)
+    calculate_matrix_representation
 ])
 
 pre_proc_imgs = pp_pipeline.apply(read_images())
