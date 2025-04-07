@@ -77,8 +77,8 @@ def extract_rotation_from_homography(data, homographyTitle="homography"):
     if quantized_angle == 360:
         quantized_angle = 0
         
-    """ print(f"Raw rotation angle: {raw_angle_deg:.2f} degrees")
-    print(f"Quantized rotation angle: {quantized_angle:.0f} degrees") """
+    print(f"Raw rotation angle: {raw_angle_deg:.2f} degrees")
+    print(f"Quantized rotation angle: {quantized_angle:.0f} degrees")
     return quantized_angle
 
 def rotate_img_from_homography(data, homographyTitle="homography"):

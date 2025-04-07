@@ -34,6 +34,7 @@ def show_debug_images(imgs_data, gridFormat=False, gridImgSize=2, gridSaveFig=Fa
         debug_img_count = len(imgs_data[0]["debug"]) # number of debug images processed for each chessboard image
         
         fig, axs = plt.subplots(imgs_count, debug_img_count, figsize=(gridImgSize * debug_img_count, gridImgSize * imgs_count), num=f"Debug")
+        axs = np.atleast_2d(axs)
         
         for img_id, data in enumerate(imgs_data):
             for i, img in enumerate(data["debug"]):

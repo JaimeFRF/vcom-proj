@@ -119,25 +119,51 @@ def find_board_countour_and_corners(data, approxPolyDP_epsilon=0.05, min_perim=1
 
     return data
 
+def to_homogeneous(p1, p2):
+    x1, y1 = p1
+    x2, y2 = p2
+    return np.cross([x1, y1, 1], [x2, y2, 1])
+
+def intersect_lines(line1, line2):
+    pt = np.cross(line1, line2)
+    if pt[2] == 0:
+        return None  
+    return (pt[0] / pt[2], pt[1] / pt[2])
+
+def order_points(pts, height, width):
+    first_quadrant = [point for point in pts if point[0] <= width // 2 and point[1] <= height // 2]
+    second_quadrant = [point for point in pts if point[0] >= width // 2 and point[1] <= height // 2]
+    third_quadrant = [point for point in pts if point[0] <= width // 2 and point[1] >= height // 2]
+    fourth_quadrant = [point for point in pts if point[0] >= width // 2 and point[1] >= height // 2]
+
+    try:
+        first_point = first_quadrant[0]
+        second_point = second_quadrant[0]
+        third_point = third_quadrant[0]
+        fourth_point = fourth_quadrant[0]
+    except:
+        raise ValueError("Not all quadrants have at least one point.")
+
+    return np.array([
+        first_point,
+        second_point,
+        fourth_point,
+        third_point
+    ], dtype=np.float32)
 
 def cluster_contours(data):
-    orig_img = data["metadata"]["line_img"]
+    line_img = data["metadata"]["line_img"]
+    height, width = line_img.shape[:2]
 
-    gray = cv2.cvtColor(orig_img, cv2.COLOR_BGR2GRAY)
+    gray = cv2.cvtColor(line_img, cv2.COLOR_BGR2GRAY)
     filtered = cv2.bilateralFilter(gray, 5, 75, 75)
     lines = cv2.HoughLines(filtered, 1, math.pi / 180, 65)
-    points = []
+    line_segments = []
 
     if lines is not None:
         lines_params = np.array([line[0] for line in lines])
 
-        kmeans = KMeans(n_clusters=4, random_state=0)
-        kmeans.fit(lines_params)
-
-        centroids = kmeans.cluster_centers_
-
-        for centroid in centroids:
-            rho, theta = centroid
+        for rho, theta in lines_params:
             a = np.cos(theta)
             b = np.sin(theta)
             x0 = a * rho
@@ -146,13 +172,53 @@ def cluster_contours(data):
             y1 = int(y0 + 6000 * (a))
             x2 = int(x0 - 6000 * (-b))
             y2 = int(y0 - 6000 * (a))
-            cv2.line(orig_img, (x1, y1), (x2, y2), (0, 255, 0), 4)  
-            points.append([(x1,y1) , (x2,y2)])
+            cv2.line(line_img, (x1, y1), (x2, y2), (255, 200, 100), 1)  # Light color, thinner
 
-    print("The lines are ", points) 
+        kmeans = KMeans(n_clusters=4, random_state=0)
+        kmeans.fit(lines_params)
+        centroids = kmeans.cluster_centers_
 
-    data["metadata"]["clustered_img"] = orig_img
+        for rho, theta in centroids:
+            a = np.cos(theta)
+            b = np.sin(theta)
+            x0 = a * rho
+            y0 = b * rho
+            x1 = int(x0 + 6000 * (-b))
+            y1 = int(y0 + 6000 * (a))
+            x2 = int(x0 - 6000 * (-b))
+            y2 = int(y0 - 6000 * (a))
+
+            cv2.line(line_img, (x1, y1), (x2, y2), (0, 255, 0), 4)  # Thicker and green
+            line_segments.append(((x1, y1), (x2, y2)))
+
+    homogeneous_lines = [to_homogeneous(p1, p2) for (p1, p2) in line_segments]
+    intersection_points = []
+
+    for i in range(len(homogeneous_lines) - 1):
+        for j in range(i + 1, len(homogeneous_lines)):
+            pt = intersect_lines(homogeneous_lines[i], homogeneous_lines[j])
+            if pt is not None:
+                x, y = pt
+                if 0 <= x < width and 0 <= y < height:
+                    cv2.circle(line_img, (int(x), int(y)), 10, (0, 0, 255), -1)
+                    intersection_points.append((int(x), int(y)))
+
+    intersection_points = np.array(intersection_points, dtype=np.float32)
+
+    if len(intersection_points) == 4:
+        try:
+            ordered_corners = order_points(intersection_points, height, width)
+            data["metadata"]["board_corners"] = ordered_corners
+            print("USING THE NEW STUFF")
+        except:
+            print("USING THE OLD STUFF")
+    else:
+        print("USING THE OLD STUFF")
+        
+
+    data["metadata"]["clustered_img"] = line_img
     return data
+
 
 # given a set of corners, warp the image to a new perspective
 def warp_image_from_board_corners(data, warp_width=500, warp_height=500, imgFieldName="orig_img"):

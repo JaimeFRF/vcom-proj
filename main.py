@@ -11,10 +11,8 @@ from boardOutlineProcessing.functions import *
 import boardOutlineProcessing.parameters as boardOutParams
 from boardOutlineProcessing.boardOutlineProcessing import BoardOutlineProcessing
 from rotationProcessing.functions import *
-import rotationProcessing.parameters as rotParams
 from rotationProcessing.rotationProcessing import RotationProcessing
 from singleSquaresProcessing.functions import *
-import singleSquaresProcessing.parameters as singleParams
 from singleSquaresProcessing.singleSquaresProcessing import SingleSquaresProcessing
 
 
@@ -48,7 +46,6 @@ board_outline_pipeline = BoardOutlineProcessing([
     partial(show_current_image, imageTitle="Canny Dilated Closed", resizeAmount=0.25),
     partial(find_board_countour_and_corners, approxPolyDP_epsilon=boardOutParams.approxPolyDP_epsilon),
     partial(draw_contour_blank_image),
-    partial(show_image_metadata, imageName="line_img", imageTitle="Before"),
     cluster_contours,
     partial(show_image_metadata, imageName="clustered_img", imageTitle="Clustered contours"),
     partial(warp_image_from_board_corners, warp_width=boardOutParams.warp_width, warp_height=boardOutParams.warp_height),
@@ -56,6 +53,7 @@ board_outline_pipeline = BoardOutlineProcessing([
     # partial(draw_hough_lines, color=Utils.color_red, withText=False)
     # partial(show_current_image, imageTitle="Warped final pipeline image"),
     partial(save_current_image_in_metadata, fieldName="warped_image"), # save image to metadata to be reused later
+    partial(show_image_metadata, imageName="warped_image", imageTitle="The warped image is"),
 ])
 
 #separate small pipeline for the horse reference image, and the results will be merged with the main pipeline, in the rotation pipeline part
@@ -105,6 +103,6 @@ squares_and_horse_results = MetadataMerger.merge_pipelines_metadata(squares_resu
 rotate_results = rotate_pipeline.apply(squares_and_horse_results)
 single_square_results = single_squares_pipeline.apply(rotate_results)
 
-show_debug_images(single_square_results, gridFormat=True, gridImgSize=5, gridSaveFig=False)
+show_debug_images(squares_and_horse_results, gridFormat=True, gridImgSize=5, gridSaveFig=False)
 # show_images(squares_results)
-# test_implementation(single_square_results)
+test_implementation(single_square_results)
