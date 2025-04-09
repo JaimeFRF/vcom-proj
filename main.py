@@ -16,6 +16,9 @@ from rotationProcessing.rotationProcessing import RotationProcessing
 from singleSquaresProcessing.functions import *
 import singleSquaresProcessing.parameters as singleParams
 from singleSquaresProcessing.singleSquaresProcessing import SingleSquaresProcessing
+from boundingBoxesNEW.functions import *
+import boundingBoxesNEW.parameters as boundingParams
+from boundingBoxesNEW.boundingBoxesNew import BoundingBoxes
 
 
 ## Pipeline Design Pattern -> Só é preciso meter as funções/ordem etc que queremos
@@ -95,11 +98,27 @@ single_squares_pipeline = SingleSquaresProcessing([
     partial(print_field_value, fieldName="total_white", withFieldName=True)
 ])
 
+draw_boxes_pipeline = BoundingBoxes([
+    draw_piece_bounding_boxes_from_matrix,
+    #partial(show_current_image, imageTitle="With Bounding Boxes", resizeAmount=0.5)
+])
+
 pre_proc_imgs = pp_pipeline.apply(read_images())
 squares_results = board_outline_pipeline.apply(pre_proc_imgs)
 
-show_debug_images(squares_results, gridFormat=True, gridImgSize=3, gridSaveFig=False)
-# show_images(squares_results)
+#final_results = draw_boxes_pipeline.apply(squares_results)
+#show_images(final_results, resizeAmount=0.5, gridFormat=True)
+
+#show_debug_images(squares_results, gridFormat=True, gridImgSize=3, gridSaveFig=False)
+separate_horse_results = separate_horse_pipeline.apply(read_single_image("our_images/cavalinhoPequeno.jpg"))[0]
+squares_and_horse_results = MetadataMerger.merge_pipelines_metadata(squares_results, separate_horse_results)
+rotate_results = rotate_pipeline.apply(squares_and_horse_results)
+single_square_results = single_squares_pipeline.apply(rotate_results)
+final_results = draw_boxes_pipeline.apply(single_square_results)
+show_images(final_results)
+#show_images(squares_results)
+
+
 # separate processing pipeline for the single horse image used for rotation. The metadata created here will be merged with the main pipeline results, so we can acess keypoints and descriptors of the horse in main pipeline
 # separate_horse_results = separate_horse_pipeline.apply(read_single_image("our_images/cavalinhoPequeno.jpg"))[0]
 
