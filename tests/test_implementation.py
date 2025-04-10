@@ -27,9 +27,9 @@ def test_implementation(imgs_data, check_number_pieces=True):
     total_tp = total_fp = total_fn = total_tn = 0
 
     for nbr, i in enumerate(imgs_data):
-        print("\n" + "-" * 50)  
+        """ print("\n" + "-" * 50)  
         print(f"Results for Image {nbr+1}: {i['name']}")
-        print("-" * 50)
+        print("-" * 50) """
 
         sol = next((item for item in results if item["name"] == i["name"]), None)
         assert sol is not None
