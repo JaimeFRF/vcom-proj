@@ -38,6 +38,7 @@ pp_pipeline = PreProcessing([
 
 #identify the board, warp it to occupy the whole image
 board_outline_pipeline = BoardOutlineProcessing([
+    partial(helper),
     partial(canny, low=boardOutParams.canny_low_threshold, high=boardOutParams.canny_high_threshold), 
     partial(show_current_image, imageTitle="Canny Edges", resizeAmount=0.25),
     apply_mask,
@@ -53,7 +54,37 @@ board_outline_pipeline = BoardOutlineProcessing([
     partial(warp_image_from_board_corners, warp_width=boardOutParams.warp_width, warp_height=boardOutParams.warp_height),
     # partial(hough_lines, rho=boardOutParams.hough_rho, theta=boardOutParams.hough_theta, votes=boardOutParams.hough_votes),
     # partial(draw_hough_lines, color=Utils.color_red, withText=False)
-    # partial(show_current_image, imageTitle="Warped final pipeline image"),
+
+    
+
+    partial(show_current_image, imageTitle="Warped final pipeline image"),
+    
+    #convert_to_gray,
+    partial(helper),
+    partial(cut_corners_all),
+    partial(show_current_image, imageTitle="Warped final pipeline gey"),
+    partial(binarize),
+    partial(gaussian, ksize=(3, 3)),
+
+    partial(show_current_image),
+    partial(canny, low=boardOutParams.canny_low_threshold, high=boardOutParams.canny_high_threshold),
+ 
+    #partial(dilate_edges, ksize=boardOutParams.dilate_ksize, iterations=1),
+
+    partial(show_current_image, imageTitle="Warped final pipeline gey canny dilated"),
+
+    partial(show_current_image, imageTitle="Warped final pipeline gey canny dilated closed"),
+    #partial(find_board_countour_and_corners, approxPolyDP_epsilon=0.15, max_perim=20000),
+    #partial(draw_contours_warped, imageTitle="Original with Countors"),
+
+
+    partial(find_board_contour_and_corners_warp ,min_perim=10, max_perim=1000, approxPolyDP_epsilon=0.05),
+    partial(draw_contours_warped, imageTitle="Detected Chessboard", contoursFieldName="board_contour"),
+    
+
+    partial(show_current_image, imageTitle="Warped final pipeline gey canny"),
+
+    partial(getimg),
     partial(save_current_image_in_metadata, fieldName="warped_image"), # save image to metadata to be reused later
 ])
 

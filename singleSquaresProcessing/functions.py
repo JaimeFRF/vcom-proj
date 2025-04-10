@@ -12,6 +12,10 @@ def cut_corners(data, cut_size=40):
     data["image"] = data["image"][cut_size:460, cut_size:460]
     return data
 
+def cut_corners_all(data, cut_size=20):
+    data["image"] = data["image"][cut_size:480, cut_size:480]
+    return data
+
 #separate individual squares from the board
 #assumes current image is already warped into correct grid, and ready to be cut
 def separate_squares(data, squareFieldName="squares_list", save_tiles=False):

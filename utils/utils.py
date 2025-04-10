@@ -284,3 +284,19 @@ def display_scrollable_figure(fig, title="Debug", initial_size=(700, 500)):
     window.show()
 
     app.exec_()
+
+
+    #draw chessboard calculated countours over original image
+def draw_contours_warped(data, imageTitle="Contours", color=color_green, thickness=3, contoursFieldName="board_contour"):
+    contours = data["metadata"].get(contoursFieldName, None)
+    if contours is None:
+        raise ValueError(f"Contours data must be defined in 'metadata.{contoursFieldName}' to draw contours.")
+    
+    img = data["metadata"]["tempimg"].copy()
+    print("Number of contours to draw:", len(contours))
+    img = cv2.drawContours(img, contours, -1, color, thickness)
+    show_image_with_name(data, imageTitle, img)
+    return data
+
+
+

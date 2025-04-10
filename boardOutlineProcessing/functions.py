@@ -132,3 +132,85 @@ def warp_image_from_board_corners(data, warp_width=500, warp_height=500, imgFiel
     data["image"] = warped
     
     return data
+
+#helper fun
+def helper(data):
+    print("Image shape: ", data["image"].shape)
+    data["metadata"]["tempimg"] = data["image"].copy() 
+    #print(data)
+    return data
+
+def getimg(data):
+    #print(data)
+    data["image"] = data["metadata"]["tempimg"]
+    return data
+
+def binarize(data, threshold=127, max_value=255):
+    # Convert to grayscale if image is color
+    if len(data["image"].shape) > 2 and data["image"].shape[2] > 1:
+        gray = cv2.cvtColor(data["image"], cv2.COLOR_BGR2GRAY)
+    else:
+        gray = data["image"].copy()
+    
+    # Convert to uint8 if needed
+    if gray.dtype != np.uint8:
+        gray = (gray * 255).astype(np.uint8)
+    
+    # If threshold is 0, use Otsu's method
+    if threshold == 0:
+        _, binary = cv2.threshold(gray, 0, max_value, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    else:
+        # Regular binary thresholding
+        _, binary = cv2.threshold(gray, threshold, max_value, cv2.THRESH_BINARY)
+    
+    data["image"] = binary
+    return data
+
+
+
+# Step 1: Find contours in the image
+def find_contours_warp(data):
+    # Ensure the image is binary (e.g., after thresholding)
+    if "image" not in data or data["image"] is None:
+        raise ValueError("No image data provided for contour detection.")
+    
+    # Find contours (assuming data["image"] is a binary image)
+    contours, _ = cv2.findContours(data["image"], cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    data["metadata"]["contours"] = contours
+    return data
+
+# Step 2: Find the board contour and its corners
+def find_board_contour_and_corners_warp(data, approxPolyDP_epsilon=0.05, min_perim=1000, max_perim=5000):
+    if "metadata" not in data:
+        data["metadata"] = {}
+    
+    data = find_contours_warp(data)
+    contours = data["metadata"].get("contours", None)
+
+    if contours is None or len(contours) == 0:
+        raise ValueError("No contours detected, so can't find board contour and corners.")
+    
+    filtered_contours = [cnt for cnt in contours if min_perim <= cv2.arcLength(cnt, True) <= max_perim]
+    if not filtered_contours:
+        raise ValueError("No contours found within perimeter range.")
+    
+    board_contours = []  # Store all valid quadrilaterals
+    for contour in filtered_contours:
+        hull = cv2.convexHull(contour)
+        peri = cv2.arcLength(hull, True)
+        approx = cv2.approxPolyDP(hull, approxPolyDP_epsilon * peri, True)
+        
+        if len(approx) == 4:  # Keep all quadrilaterals
+            board_contours.append(approx)
+    
+    if not board_contours:
+        raise ValueError("No valid board contours detected (no quadrilaterals found).")
+    
+    # Store all contours (not just one)
+    data["metadata"]["board_contour"] = board_contours
+    # Optionally store corners for all contours
+    data["metadata"]["board_corners"] = [cnt.reshape(4, 2).astype(np.float32) for cnt in board_contours]
+    
+    print("Number of board contours detected:", len(board_contours))
+    return data
+
