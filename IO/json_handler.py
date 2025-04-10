@@ -41,10 +41,13 @@ def write_results(data):
 
     write_data = []
     for i in data:
+        matrix = i["metadata"]["chessboard_matrix"]
+        matrix[matrix == 2] = 1  
+    
         write_data.append({
             "image" : "images/{name}".format(name=i["name"]),
             "num_pieces" : i["metadata"]["total_black"] + i["metadata"]["total_white"],
-            "board": i["metadata"]["chessboard_matrix"].tolist()
+            "board": matrix.tolist()
         })
 
     json_string = json.dumps(write_data, indent=4, separators=(',', ': '))
