@@ -5,12 +5,12 @@ def read_images():
     data = json.load(open("input.json"))
     images_dict = [{
         "name": i, 
-        "orig_img": cv2.imread("images/{name}".format(name=i)), # this one is to keep the original image
         "image": cv2.imread("images/{name}".format(name=i)), # this one is to apply the operations 
+        "orig_img": cv2.imread("images/{name}".format(name=i)), # this one is to keep the original image
         "debug": [], # store debug images here, to print at the end in a single window
         "metadata": {}
         } 
-    for i in data["images"]]
+    for i in data["image_files"]]
     return images_dict
 
 def read_single_image(path):
@@ -35,6 +35,22 @@ def read_results():
     } for i in data]
     return solutions_dict
 
-#TODO
-def write_results():
+
+#TODO: MISSING DETECTED PIECES
+def write_results(data):
+
+    write_data = []
+    for i in data:
+        write_data.append({
+            "image" : "images/{name}".format(name=i["name"]),
+            "num_pieces" : i["metadata"]["total_black"] + i["metadata"]["total_white"],
+            "board": i["metadata"]["chessboard_matrix"].tolist()
+        })
+
+    json_string = json.dumps(write_data, indent=4, separators=(',', ': '))
+    json_string = json_string.replace('\n            [', ' [').replace('\n                ', ' ').replace('\n            ]', ' ]')
+
+    with open("output.json", "w") as f:
+        f.write(json_string)
+
     return 0

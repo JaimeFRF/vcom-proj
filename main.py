@@ -107,6 +107,7 @@ squares_and_horse_results = MetadataMerger.merge_pipelines_metadata(squares_resu
 rotate_results = rotate_pipeline.apply(squares_and_horse_results)
 single_square_results = single_squares_pipeline.apply(rotate_results)
 
-show_debug_images(single_square_results, gridFormat=True, gridImgSize=5, gridSaveFig=False)
+# show_debug_images(single_square_results, gridFormat=True, gridImgSize=5, gridSaveFig=False)
 # show_images(squares_results)
-# test_implementation(single_square_results)
+test_implementation(single_square_results)
+write_results(single_square_results)
