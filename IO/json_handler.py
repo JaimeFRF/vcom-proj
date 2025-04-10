@@ -35,6 +35,22 @@ def read_results():
     } for i in data]
     return solutions_dict
 
-#TODO
-def write_results():
+
+#TODO: MISSING DETECTED PIECES
+def write_results(data):
+
+    write_data = []
+    for i in data:
+        write_data.append({
+            "image" : "images/{name}".format(name=i["name"]),
+            "num_pieces" : i["metadata"]["total_black"] + i["metadata"]["total_white"],
+            "board": i["metadata"]["chessboard_matrix"].tolist()
+        })
+
+    json_string = json.dumps(write_data, indent=4, separators=(',', ': '))
+    json_string = json_string.replace('\n            [', ' [').replace('\n                ', ' ').replace('\n            ]', ' ]')
+
+    with open("output.json", "w") as f:
+        f.write(json_string)
+
     return 0
