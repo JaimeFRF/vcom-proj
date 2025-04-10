@@ -9,7 +9,7 @@ import os
 
 #cut image corners all around, by certain amount
 def cut_corners(data, cut_size=40):
-    data["image"] = data["image"][cut_size:460, cut_size:460]
+    data["image"] = data["image"][cut_size:(-cut_size), cut_size:(-cut_size)]
     return data
 
 #separate individual squares from the board

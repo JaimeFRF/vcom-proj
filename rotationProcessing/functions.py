@@ -81,7 +81,7 @@ def extract_rotation_from_homography(data, homographyTitle="homography"):
     print(f"Quantized rotation angle: {quantized_angle:.0f} degrees")
     return quantized_angle
 
-def rotate_img_from_homography(data, homographyTitle="homography"):
+def rotate_img_from_homography(data, homographyTitle="homography", rotationMatrixFieldName="rotation_matrix"):
     M = data["metadata"].get(homographyTitle, None)
     if (M is None):
         raise ValueError("Homography matrix must be defined previously in pipeline, to extract rotation angle")
@@ -96,5 +96,5 @@ def rotate_img_from_homography(data, homographyTitle="homography"):
 
     # apply the rotation to the train image
     data["image"] = cv2.warpAffine(data["image"], rotation_matrix, (w, h), flags=cv2.INTER_LINEAR)
-
+    data["metadata"][rotationMatrixFieldName] = rotation_matrix
     return data

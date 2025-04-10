@@ -68,6 +68,7 @@ def show_image_with_name(data, imageTitle, image):
     # cv2.imshow(image_window_name, image)
     return data
 
+#draw points for feature detection keypoints over original image
 def draw_points(data, color=color_green, radius=3, thickness=2, imageTitle="Points", pointsFieldName="keypoints"):
     points = data["metadata"].get(pointsFieldName, None) # points data from previous function in pipeline
     if (points is None):
@@ -77,6 +78,26 @@ def draw_points(data, color=color_green, radius=3, thickness=2, imageTitle="Poin
 
     for point in points:
         x, y = point.pt
+        img = cv2.circle(img, (int(x), int(y)), radius, color, thickness)
+
+    show_image_with_name(data, imageTitle, img)
+    return data
+
+#draw points for np array over original image
+def draw_points_from_array(data, color=color_green, radius=3, thickness=2, imageTitle="Points", pointsFieldName="keypoints"):
+    points = data["metadata"].get(pointsFieldName, None)
+    if (points is None):
+        raise ValueError(f"{pointsFieldName} data must be defined previously in pipeline, in order to draw points")
+    
+    if (points.shape[1] != 2 or len(points.shape) != 2):
+        print(f"{pointsFieldName} data must be 2D array, ignoring drawing for {data['name']}")
+        return data
+    
+    img = data["image"].copy()
+    points = points.reshape(-1, 2) # reshape to 2D array if needed
+    
+    for point in points:
+        [x, y] = point
         img = cv2.circle(img, (int(x), int(y)), radius, color, thickness)
 
     show_image_with_name(data, imageTitle, img)

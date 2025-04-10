@@ -172,7 +172,7 @@ def find_board_countour_and_corners_2(data, approxPolyDP_epsilon=0.05, min_perim
     return data
 
 # given a set of corners, warp the image to a new perspective
-def warp_image_from_board_corners(data, warp_width=500, warp_height=500):
+def warp_image_from_board_corners(data, warp_width=500, warp_height=500, warpMatrixFieldName="warp_matrix"):
     corners = data["metadata"].get("board_corners", None)
     if (corners is None):
         raise ValueError("Board corners data must be defined previously in pipeline, in order to warp image")
@@ -183,5 +183,6 @@ def warp_image_from_board_corners(data, warp_width=500, warp_height=500):
     warped = cv2.warpPerspective(data["orig_img"].copy(), matrix, (warp_width, warp_height))
     
     data["image"] = warped
+    data["metadata"][warpMatrixFieldName] = matrix
     
     return data
