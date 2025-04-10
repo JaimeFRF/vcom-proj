@@ -5,12 +5,12 @@ def read_images():
     data = json.load(open("input.json"))
     images_dict = [{
         "name": i, 
-        "orig_img": cv2.imread("images/{name}".format(name=i)), # this one is to keep the original image
         "image": cv2.imread("images/{name}".format(name=i)), # this one is to apply the operations 
+        "orig_img": cv2.imread("images/{name}".format(name=i)), # this one is to keep the original image
         "debug": [], # store debug images here, to print at the end in a single window
         "metadata": {}
         } 
-    for i in data["images"]]
+    for i in data["image_files"]]
     return images_dict
 
 def read_single_image(path):
