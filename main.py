@@ -120,6 +120,6 @@ density_results = density_pipeline.apply(rotate_results)
 single_square_results = single_squares_pipeline.apply(density_results)
 test_implementation(single_square_results)
 
-show_debug_images(single_square_results, gridFormat=True, gridImgSize=5, gridSaveFig=False)
+# show_debug_images(single_square_results, gridFormat=True, gridImgSize=5, gridSaveFig=False)
 # show_images(squares_results)
 write_results(single_square_results)
