@@ -111,7 +111,7 @@ squares_results = board_outline_pipeline.apply(pre_proc_imgs)
 
 
 # separate processing pipeline for the single horse image used for rotation. The metadata created here will be merged with the main pipeline results, so we can acess keypoints and descriptors of the horse in main pipeline
-separate_horse_results = separate_horse_pipeline.apply(read_single_image("our_images/cavalinhoPequeno3.jpg"))[0]
+separate_horse_results = separate_horse_pipeline.apply(read_single_image("our_images/cavalinhoPequeno.jpg"))[0]
 
 squares_and_horse_results = MetadataMerger.merge_pipelines_metadata(squares_results, separate_horse_results)
 rotate_results = rotate_pipeline.apply(squares_and_horse_results)
