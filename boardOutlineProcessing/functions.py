@@ -1,6 +1,4 @@
 import cv2
-import boardOutlineProcessing.parameters as BoardOutlineProcParams
-import utils.utils as Utils
 import math
 import numpy as np
 
@@ -16,7 +14,7 @@ def canny(data, low=100, high=200):
     return data
 
 # detect lines, from edges of image
-def hough_lines(data, rho=1, theta=math.pi / 180, votes=50):
+def hough_lines(data, rho=1, theta=math.pi / 180, votes=150):
     lines = cv2.HoughLines(
         data["image"],
         rho, # resolution in pixels of the Hough grid -> higher value more precise distances of lines
