@@ -44,13 +44,13 @@ pp_pipeline = PreProcessing([
 #identify the board, warp it to occupy the whole image
 board_outline_pipeline = BoardOutlineProcessing([
     partial(canny, low=boardOutParams.canny_low_threshold, high=boardOutParams.canny_high_threshold), 
-    # partial(show_current_image, imageTitle="Canny Edges", resizeAmount=0.25),
+    partial(show_current_image, imageTitle="Canny Edges", resizeAmount=0.25),
     partial(dilate_edges, ksize=boardOutParams.dilate_ksize, iterations=boardOutParams.dilate_iterations),
+    partial(save_current_image_in_metadata, fieldName="dilated_image"),
     # partial(show_current_image, imageTitle="Canny Dilated", resizeAmount=0.25),
     partial(closing, ksize=boardOutParams.closing_ksize, iterations=boardOutParams.closing_iterations),
     # partial(show_current_image, imageTitle="Canny Dilated Closed", resizeAmount=0.25),
     partial(find_board_countour_and_corners, approxPolyDP_epsilon=boardOutParams.approxPolyDP_epsilon),
-    # partial(find_board_countour_and_corners_2, approxPolyDP_epsilon=boardOutParams.approxPolyDP_epsilon),
 
     partial(draw_contours, imageTitle="Original with Countors"),
     partial(warp_image_from_board_corners, warp_width=boardOutParams.warp_width, warp_height=boardOutParams.warp_height),
@@ -83,7 +83,7 @@ rotate_pipeline = RotationProcessing([
     # partial(draw_points, imageTitle="Keypoints_main"),
     partial(flann_matcher, descriptors1="horse_descriptors"),
     partial(find_homography_from_matches, keypoints1="horse_keypoints"),
-    partial(draw_perspective_transformed_points, widthTitle="horse_width", heightTitle="horse_height"),
+    # partial(draw_perspective_transformed_points, widthTitle="horse_width", heightTitle="horse_height"),
     # draw_crosshair,
     partial(set_current_image, imageFieldName="warped_image"), # set the current image to the previous warped image, to recover colors, before rotation
     rotate_img_from_homography,
@@ -102,12 +102,19 @@ single_squares_pipeline = SingleSquaresProcessing([
 ])
 
 draw_boxes_pipeline = BoundingBoxes([
-    partial(set_current_image, imageFieldName="cut_corners"),
-    partial(show_current_image, imageTitle="Cut Corners"),
     partial(set_current_image, imageFieldName="warped_rotated_image"),
     partial(get_occupied_squares_corners, boardCornerCutSize=singleParams.cut_corners_size),
+    partial(get_pieces_static_bounding_boxes, bbVertFactor=boundingParams.bbVertFactor),
     partial(set_current_image, imageFieldName="og_img"),
-    partial(draw_points_from_array, imageTitle="Occupied Squares Corners", pointsFieldName="occupied_squares_corners", radius=15, thickness=15, color=Utils.color_red),
+    partial(show_current_image, imageTitle="Og_img", resizeAmount=0.25),
+    partial(gamma_adjust, gamma=boundingParams.gamma),
+    partial(download_current_image, path="temp/gamma_adjust"),
+    partial(show_current_image, imageTitle="Gamma adjust", resizeAmount=0.25),
+    find_piece_contours_in_bounding_boxes,
+    partial(show_current_image, imageTitle="image Kmeans"),
+    partial(draw_points_from_array, imageTitle="Occupied Squares Corners", pointsFieldName="occupied_squares_corners", radius=10, thickness=10, color=Utils.color_red),#, makeColored=True),
+    partial(draw_rectangles, imageTitle="Occupied Squares Bounding Boxes", fieldName="bounding_boxes", color=Utils.color_green, thickness=2)#, makeColored=True),
+    # show_bounding_box_cuts
 ])
 
 pre_proc_imgs = pp_pipeline.apply(read_images())
@@ -122,6 +129,6 @@ rotate_results = rotate_pipeline.apply(squares_and_horse_results)
 single_square_results = single_squares_pipeline.apply(rotate_results)
 final_results = draw_boxes_pipeline.apply(single_square_results)
 
-show_debug_images(squares_results, gridFormat=True, gridImgSize=3.5, gridSaveFig=False)
+show_debug_images(squares_results, gridFormat=True, gridImgSize=3, gridSaveFig=False)
 # show_images(final_results)
 # test_implementation(single_square_results)

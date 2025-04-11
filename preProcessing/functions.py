@@ -57,3 +57,25 @@ def table_segmentation(data, lower_color_bound=(150,100,50), upper_color_bound=(
     cv2.waitKey(0)
     
     return data
+
+def gamma_adjust(data, gamma=0.4, cutoff=128, cvtColorHSV=True):
+     # LUT: 0–255 -> new value
+    lookUpTable = np.empty(256, dtype=np.uint8)
+    
+    for i in range(256):
+        if i < cutoff:
+            # apply gamma to dark areas
+            lookUpTable[i] = np.clip(pow(i / 255.0, gamma) * 255.0, 0, 255)
+        else:
+            # leave bright areas untouched (linear)
+            lookUpTable[i] = i
+    
+    hsv = cv2.cvtColor(data["image"], cv2.COLOR_BGR2HSV)
+    h, s, v = cv2.split(hsv)
+    v = cv2.LUT(v, lookUpTable)
+    hsv = cv2.merge([h, s, v])
+
+    data["image"] = cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)
+
+    return data
+

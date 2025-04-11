@@ -8,6 +8,7 @@ import cv2
 from PyQt5.QtWidgets import QApplication, QMainWindow, QScrollArea, QWidget, QVBoxLayout
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from datetime import datetime
+import os
 
 #Colors
 color_red = (0,0,255)
@@ -84,7 +85,7 @@ def draw_points(data, color=color_green, radius=3, thickness=2, imageTitle="Poin
     return data
 
 #draw points for np array over original image
-def draw_points_from_array(data, color=color_green, radius=3, thickness=2, imageTitle="Points", pointsFieldName="keypoints"):
+def draw_points_from_array(data, color=color_green, radius=3, thickness=2, imageTitle="Points", pointsFieldName="keypoints", makeColored=False):
     points = data["metadata"].get(pointsFieldName, None)
     if (points is None):
         raise ValueError(f"{pointsFieldName} data must be defined previously in pipeline, in order to draw points")
@@ -94,8 +95,10 @@ def draw_points_from_array(data, color=color_green, radius=3, thickness=2, image
         return data
     
     img = data["image"].copy()
-    points = points.reshape(-1, 2) # reshape to 2D array if needed
     
+    if (makeColored):
+        img = cv2.cvtColor(img,cv2.COLOR_GRAY2RGB)
+
     for point in points:
         [x, y] = point
         img = cv2.circle(img, (int(x), int(y)), radius, color, thickness)
@@ -305,3 +308,55 @@ def display_scrollable_figure(fig, title="Debug", initial_size=(700, 500)):
     window.show()
 
     app.exec_()
+
+# draw rectangles over the image, used for debugging
+# rectangles: array of arrays [x1, y1, x2, y2] or [x, y, width, height] depending on withWidthHeight
+# color: color of the rectangles
+# thickness: thickness of the rectangle lines
+# imageTitle: title of the image window
+# fieldName: name of the field in metadata where the rectangles were stored
+# withWidthHeight: if True, the rectangles are defined as [x, y, width, height], otherwise as [x1, y1, x2, y2]
+
+def draw_rectangles(data, color=color_red, thickness=2, imageTitle="Rectangles", fieldName="rectangles", withWidthHeight=False, makeColored=False):
+    rectangles = data["metadata"].get(fieldName, None)
+    if (rectangles is None):
+        raise ValueError(f"Field {fieldName} must be defined previously in pipeline, to print its value")
+
+    img = data["image"].copy()
+    if (makeColored):
+        img = cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
+        
+    for rect in rectangles:
+        if (withWidthHeight):
+            [x, y, w, h] = map(int, np.round(rect))
+            x1 = x
+            y1 = y
+            x2 = x + w
+            y2 = y + h
+        else:
+            [x1, y1, x2, y2] = map(int, np.round(rect))
+        
+        img = cv2.rectangle(img, (x1, y1), (x2, y2), color, thickness)
+
+    show_image_with_name(data, imageTitle, img)
+    return data
+
+def show_bounding_box_cuts(data, bbFieldName="bounding_boxes", imageTitle="BBCuts"):
+    bboxes = data["metadata"].get(bbFieldName, None)
+    if (bboxes is None):
+        raise ValueError(f"Field {bbFieldName} must be defined previously in pipeline, to print its value")
+    
+    img = data["image"].copy()
+    
+    for i, bbox in enumerate(bboxes):
+        x1, y1, x2, y2 = bbox
+        piece_img = img[y1:y2, x1:x2]
+
+        show_image_with_name(data, f"{imageTitle}-bbox{i}", piece_img)
+    return data
+
+def download_current_image(data, path="temp/image"):
+    final_path = f"{path}_{data['name']}"
+    os.makedirs(os.path.dirname(final_path), exist_ok=True)
+    cv2.imwrite(final_path, data["image"])
+    return data
