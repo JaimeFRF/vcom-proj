@@ -1,6 +1,5 @@
 import cv2
 import utils.utils as Utils
-import math
 import singleSquaresProcessing.parameters as Parameters
 import numpy as np
 import os
@@ -16,8 +15,7 @@ def cut_corners(data, cut_size=40):
 #assumes current image is already warped into correct grid, and ready to be cut
 def separate_squares(data, squareFieldName="squares_list", save_tiles=False):
 
-    #TODO: não se podia dividir só por 8 com o tamanho atual? size = round(data["image"].shape[0]) / 8
-    size = round((465-44) / 8) 
+    size = round(data["image"].shape[0]) / 8 
 
     img = data["image"]
     squares_list = []
@@ -34,7 +32,7 @@ def separate_squares(data, squareFieldName="squares_list", save_tiles=False):
             x2, y2 = x1 + size, y1 + size
             
             # get the tile image
-            square = img[y1:y2, x1:x2].copy()
+            square = img[int(y1):int(y2), int(x1):int(x2)].copy()
 
             # save the tile image
             if (save_tiles):
@@ -91,10 +89,7 @@ def calculate_matrix_representation(data, squaresListName="squares_list", matrix
     chessboard_matrix = np.zeros((8, 8), dtype=int)
 
     for i, tile in enumerate(squares_list):
-            grey = cv2.cvtColor(tile, cv2.COLOR_BGR2GRAY)
-
-            # TODO: Tunar esta situação
-            circle = cv2.HoughCircles(grey, cv2.HOUGH_GRADIENT, 1,20, param1=50,param2=25,minRadius=0,maxRadius=0)
+            circle = cv2.HoughCircles(tile,  cv2.HOUGH_GRADIENT,  dp=1,  minDist=10,  param1=50, param2=21, minRadius=14, maxRadius=0)
             row = i // 8
             col = i % 8
             
@@ -102,12 +97,17 @@ def calculate_matrix_representation(data, squaresListName="squares_list", matrix
                 circle = np.uint16(np.around(circle))
 
                 for i in circle[0,:]:
-                    width, height, _ = tile.shape
+                    width, height = tile.shape
                     (ix, iy) = width // 2, height // 2
                     cx, cy, r = int(i[0]), int(i[1]), int(i[2])
                     
-                    if(abs(cx - ix) <= 10 and abs(cy - iy) <= 10):
-                        crop = grey[(cy-r):(cy+r), (cx - r):(cx + r)]
+                    if(abs(cx - ix) <= 20 and abs(cy - iy) <= 20):
+                        x1 = max(cx - r, 0)
+                        x2 = min(cx + r, width)
+                        y1 = max(cy - r, 0)
+                        y2 = min(cy + r, height)
+
+                        crop = tile[(y1):(y2), (x1):(x2)]
 
                         mean_intensity = np.mean(crop)
                         if mean_intensity > 100:
@@ -116,14 +116,12 @@ def calculate_matrix_representation(data, squaresListName="squares_list", matrix
                         else:
                             blacks += 1
                             chessboard_matrix[row, col] = 2
+                        break
 
     # save results
     data["metadata"][totalBlackFieldName] = blacks
     data["metadata"][totalWhiteFieldName] = whites
-    data["metadata"][matrixFieldName] = chessboard_matrix
-
-    print("Chessboard Matrix (1 for white piece, 2 for black piece, 0 for empty)")
-
+    data["metadata"][matrixFieldName] = chessboard_matrix   
     return data
 
 
