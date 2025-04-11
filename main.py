@@ -95,7 +95,7 @@ density_pipeline = DensityProcessing([
     calculate_corners,
     partial(set_current_image, imageFieldName="warpedRotated"), 
     partial(show_metadata_image, imageTitle="Hough lines on warped image", imageName="line_map"),
-    partial(draw_contours, imageTitle="Warped with countours from density", imgName="image"),
+    partial(draw_contours, imageTitle="Warped with contours from density", imgName="image"),
     partial(warp_image_from_board_corners, imgFieldName = "image", warp_width=boardOutParams.warp_width, warp_height=boardOutParams.warp_height),
     partial(show_current_image, imageTitle="Warped final pipeline image"),
     convert_to_gray,
