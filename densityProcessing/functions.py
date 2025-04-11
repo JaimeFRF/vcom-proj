@@ -48,10 +48,10 @@ def calculate_corners(data):
     first_quadrant = [point for point in dense_points if point[0] <= width // 2 and point[1] <= height // 2]
     second_quadrant = [point for point in dense_points if point[0] >= width // 2 and point[1] <= height // 2]
     third_quadrant = [point for point in dense_points if point[0] <= width // 2 and point[1] >= height // 2]
-    forth_quadrant = [point for point in dense_points if point[0] >= width // 2 and point[1] >= height // 2]
+    fourth_quadrant = [point for point in dense_points if point[0] >= width // 2 and point[1] >= height // 2]
     
     dense_points = sorted(dense_points, key=lambda pt: density_map[pt[1], pt[0]], reverse=True)
-    points = [first_quadrant, second_quadrant, forth_quadrant, third_quadrant]
+    points = [first_quadrant, second_quadrant, fourth_quadrant, third_quadrant]
     scored_quadrants = []
     
     for quadrant in points:
