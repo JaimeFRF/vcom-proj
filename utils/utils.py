@@ -154,6 +154,15 @@ def show_current_image(data, imageTitle="current image", resizeAmount=1):
     show_image_with_name(data, imageTitle, resize_img)
     return data
 
+def show_image_in_metadata(data, imageTitle="metadata image", resizeAmount=1, imgFieldName="image"):
+    img = data["metadata"].get(imgFieldName, None)
+    if (img is None):
+        raise ValueError(f"Field {imgFieldName} must be defined previously in pipeline, to show its value")
+    
+    resize_img = cv2.resize(img.copy(), (0, 0), fx=resizeAmount, fy=resizeAmount)
+    show_image_with_name(data, imageTitle, resize_img)
+    return data
+
 # read an image from a path, during the pipeline, and add it to the data dictionary
 def read_other_image(data, path, format=cv2.IMREAD_GRAYSCALE, imageFieldName="newImage"):
     data["metadata"][imageFieldName] = cv2.imread(path, format)

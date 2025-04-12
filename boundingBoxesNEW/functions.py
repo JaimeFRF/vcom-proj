@@ -49,6 +49,7 @@ def get_occupied_squares_corners(data, boardCornerCutSize=0, resultsMatrixFieldN
     
     if not final_squares_corners:
         data["metadata"][cornersFieldName] = np.empty((0, 2))
+        data["metadata"]["debug_corners_warped_img"] = np.empty((0, 2))
         print("No occupied squares found in results_matrix; cannot compute corners.")
         return data
 
@@ -59,6 +60,7 @@ def get_occupied_squares_corners(data, boardCornerCutSize=0, resultsMatrixFieldN
     transformed_final_squares_corners = (transformed_final_squares_corners[:2, :] / transformed_final_squares_corners[2, :]).T # shape(N,2)
 
     data["metadata"][cornersFieldName] = transformed_final_squares_corners
+    data["metadata"]["debug_corners_warped_img"] = (final_squares_corners[:2, :] / final_squares_corners[2, :]).T
     return data
 
 # given a set of occupied tile corners, calculate the initial static bounding boxes for each of those tile's pieces (based on static dimensions)
@@ -107,32 +109,120 @@ def get_pieces_static_bounding_boxes(data, cornersFieldName="occupied_squares_co
     return data
 
 # find contours of pieces in each boundin box
-def find_piece_contours_in_bounding_boxes(data, bbFieldName="bounding_boxes", pieceContoursFieldName="piece_contours", white_lower_bound=(20, 60, 50), white_upper_bound=(25, 150, 255), black_lower_bound=(10, 50, 60), black_upper_bound=(20, 255, 255),  mask_edges_erosion=10):
+# bbFieldName: name of the field in metadata where the static bounding boxes were stored
+# refinedBbFieldName: name of the field in metadata where the refined boundinb boxes will be stored
+# whiteLowerBound: lower bound for the white piece color in HSV
+# whiteUpperBound: upper bound for the white piece color in HSV
+# blackLowerBound: lower bound for the black piece color in HSV
+# blackUpperBound: upper bound for the black piece color in HSV
+# whiteEdgesErosion: size of the kernel for the white piece edges erosion
+# blackEdgesErosion: size of the kernel for the black piece edges erosion
+# resultsMatrixFieldName: name of the field in metadata where the results matrix was stored
+
+def refine_bounding_boxes(data, bbFieldName="bounding_boxes", refinedBbFieldName="refined_bounding_boxes", whiteLowerBound=(20, 60, 50), whiteUpperBound=(25, 150, 255), blackLowerBound=(10, 50, 60), blackUpperBound=(20, 255, 255), whiteEdgesErosion=5, blackEdgesErosion=5, resultsMatrixFieldName="chessboard_matrix"):
     bboxes = data["metadata"].get(bbFieldName, None)
     if (bboxes is None):
         raise ValueError("Bounding boxes data must be defined previously in pipeline, in order to find piece contours")
     if (len(bboxes) == 0):
         print("No bounding boxes found; cannot find piece contours.")
-        data["metadata"][pieceContoursFieldName] = []
+        data["metadata"][refinedBbFieldName] = np.array([])
         return data
+    
+    results_matrix = data["metadata"].get(resultsMatrixFieldName, None)
+    if (results_matrix is None):
+        raise ValueError(f"{resultsMatrixFieldName} data must be defined previously in pipeline, in order to find piece contours")
     
     hsv_image = cv2.cvtColor(data["image"], cv2.COLOR_BGR2HSV)
 
-    # Create a mask for the white piece color
-    white_mask = cv2.inRange(hsv_image, np.array(list(white_lower_bound)), np.array(list(white_upper_bound)))
-    # Create a mask for the black piece color
-    black_mask = cv2.inRange(hsv_image, np.array(list(black_lower_bound)), np.array(list(black_upper_bound)))
+    #remove all 0s and flatten results matrix, to get only the color of the occupied squares
+    occupied_squares = results_matrix[results_matrix != 0]
+    print("occupied_squares", occupied_squares)
+    refined_bboxes = []
+
+    # cv2.imshow("og_img", data["image"])
+
+    for i, bbox in enumerate(bboxes):
+        x1, y1, x2, y2 = bbox
+        # get the bounding box of the piece
+        piece_bbox = data["image"][y1:y2, x1:x2]
+        # cv2.imshow("piece_bbox", piece_bbox)
+        
+        piece_mask = None
+        refined_bbox = None
+
+        # if occupying piece is white, use white color mask
+        if (occupied_squares[i] == 1):
+            piece_mask = _get_color_mask(piece_bbox, lowerBound=whiteLowerBound, upperBound=whiteUpperBound, kernelFactor=whiteEdgesErosion, iterFactor=5, morphologyType=cv2.MORPH_OPEN)
+        
+        # if occupying piece is black, use black color mask
+        else:
+            piece_mask = _get_color_mask(piece_bbox, lowerBound=blackLowerBound, upperBound=blackUpperBound, kernelFactor=blackEdgesErosion, iterFactor=5, morphologyType=cv2.MORPH_CLOSE)
+        
+        # cv2.imshow("piece_mask", piece_mask)
+        # cv2.waitKey(0)
+        
+        #find best contour from image mask mask
+        best_contour = _find_best_contour(piece_mask)
+
+        if (best_contour is None):
+            # print("No good contours detected, using previous bbox")
+            refined_bboxes.append(bbox)
+            continue
     
-    #merge both masks
-    complete_mask = cv2.bitwise_or(white_mask, black_mask)
+        x,y,w,h = cv2.boundingRect(best_contour) # get the bounding box of the biggest contour
+        refined_bbox = [x, y, x + w, y + h]
+        refined_bboxes.append(refined_bbox)
 
-    data["metadata"]["temp_img1"] = cv2.bitwise_and(data["image"], data["image"], mask=white_mask)
-    data["metadata"]["temp_img2"] = cv2.bitwise_and(data["image"], data["image"], mask=black_mask)
+    data["metadata"][refinedBbFieldName] = refined_bboxes
 
-    data["image"] = cv2.bitwise_and(data["image"], data["image"], mask=complete_mask)
-
-    #make mask 
-    # bounding rect
-    
     return data
 
+def _get_color_mask(image, lowerBound=(0,0,0), upperBound=(128,128,128), kernelFactor=5, iterFactor=3, morphologyType=cv2.MORPH_OPEN):
+    
+    hsv_image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+    
+    mask = cv2.inRange(hsv_image, np.array(list(lowerBound)), np.array(list(upperBound)))
+    _,thresh = cv2.threshold(mask, 0, 255, 0)
+
+    # cv2.imshow("thresh", thresh)
+    kernel = np.ones(kernelFactor, np.uint8)
+    thresh = cv2.morphologyEx(thresh, morphologyType, kernel, iterations=iterFactor) # we open because complete white pieces are easy to detect, so we just want to remove the noise
+    # cv2.imshow(f"{morphologyType}_thresh", open_white_thresh)
+    # cv2.waitKey(0)
+    return thresh
+
+# find the best contour from the piece mask
+# min_area: minimum area of the contour to be considered
+# max_center_dist: maximum distance from the center of the image to the center of the contour (0-0.5)
+def _find_best_contour(piece_mask, min_area=4000, max_center_dist=0.25):
+    contours, _ = cv2.findContours(piece_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+    
+    h, w = piece_mask.shape[:2]
+    center = (w // 2, h // 2)
+    best_contour = None
+    best_area = float(0)
+
+    for cnt in contours:
+        cnt_bbox = cv2.boundingRect(cnt)
+        x, y, bw, bh = cnt_bbox
+        cx, cy = x + bw/2, y + bh/2
+        area = cv2.contourArea(cnt)
+        dist = np.linalg.norm(center - np.array([cx, cy])) / max(w, h) # calculate distance from center of image to center of contour
+        # print("area-dist", area, dist)
+        temp_mask = cv2.cvtColor(piece_mask, cv2.COLOR_GRAY2BGR)
+        temp_mask = cv2.drawContours(temp_mask, [cnt], -1, (0, 0, 255), 3)
+        # cv2.imshow("contour", temp_mask)
+        # cv2.waitKey(0)
+
+        if dist < max_center_dist and area > min_area and area > best_area:
+            best_area = area
+            best_contour = cnt
+
+    if best_contour is None:
+        # print("No contours found")
+        return None
+    
+    # draw the biggest contour on the image
+    # piece_mask= cv2.drawContours(piece_mask, [cnt], -1, (0, 255, 0), 3)
+    # cv2.imshow("biggest_contour", piece_mask)
+    # cv2.waitKey(0)

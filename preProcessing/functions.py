@@ -1,5 +1,7 @@
 import cv2
 import numpy as np
+from skimage.exposure import match_histograms
+
 
 #reduce noise with smoothing, but lose edges quality
 def gaussian(data, ksize =(5, 5)):
@@ -58,7 +60,26 @@ def table_segmentation(data, lower_color_bound=(150,100,50), upper_color_bound=(
     
     return data
 
-def gamma_adjust(data, gamma=0.4, cutoff=128, cvtColorHSV=True):
+# CLAHE, in YUV color space
+def clahe2(data, clipLimit=3.0, tileGridSize=(8, 8)):
+    # yuv color space
+    yuv = cv2.cvtColor(data["image"], cv2.COLOR_BGR2YUV)
+
+    y, u, v = cv2.split(yuv)
+    
+    # clahe to y channel
+    clahe = cv2.createCLAHE(clipLimit=clipLimit, tileGridSize=tileGridSize)
+    y = clahe.apply(y)
+    
+    # Merge the channels back
+    yuv = cv2.merge((y, u, v))
+    
+    # Convert back to BGR color space
+    data["image"] = cv2.cvtColor(yuv, cv2.COLOR_YUV2BGR)
+    
+    return data
+
+def gamma_adjust(data, gamma=0.4, cutoff=128):
      # LUT: 0–255 -> new value
     lookUpTable = np.empty(256, dtype=np.uint8)
     
@@ -79,3 +100,8 @@ def gamma_adjust(data, gamma=0.4, cutoff=128, cvtColorHSV=True):
 
     return data
 
+# match the histogram of the image to a reference image
+def match_histogram_to_ref(data, referenceImgPath):
+    data["image"] = match_histograms(data["image"], cv2.imread(referenceImgPath), channel_axis=-1).astype(np.uint8)
+    
+    return data

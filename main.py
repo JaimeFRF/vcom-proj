@@ -44,7 +44,7 @@ pp_pipeline = PreProcessing([
 #identify the board, warp it to occupy the whole image
 board_outline_pipeline = BoardOutlineProcessing([
     partial(canny, low=boardOutParams.canny_low_threshold, high=boardOutParams.canny_high_threshold), 
-    partial(show_current_image, imageTitle="Canny Edges", resizeAmount=0.25),
+    # partial(show_current_image, imageTitle="Canny Edges", resizeAmount=0.25),
     partial(dilate_edges, ksize=boardOutParams.dilate_ksize, iterations=boardOutParams.dilate_iterations),
     partial(save_current_image_in_metadata, fieldName="dilated_image"),
     # partial(show_current_image, imageTitle="Canny Dilated", resizeAmount=0.25),
@@ -52,11 +52,11 @@ board_outline_pipeline = BoardOutlineProcessing([
     # partial(show_current_image, imageTitle="Canny Dilated Closed", resizeAmount=0.25),
     partial(find_board_countour_and_corners, approxPolyDP_epsilon=boardOutParams.approxPolyDP_epsilon),
 
-    partial(draw_contours, imageTitle="Original with Countors"),
+    # partial(draw_contours, imageTitle="Original with Countors"),
     partial(warp_image_from_board_corners, warp_width=boardOutParams.warp_width, warp_height=boardOutParams.warp_height),
     # partial(hough_lines, rho=boardOutParams.hough_rho, theta=boardOutParams.hough_theta, votes=boardOutParams.hough_votes),
     # partial(draw_hough_lines, color=Utils.color_red, withText=False)
-    # partial(show_current_image, imageTitle="Warped final pipeline image"),
+    partial(show_current_image, imageTitle="Warped image"),
     partial(save_current_image_in_metadata, fieldName="warped_image"), # save image to metadata to be reused later
 ])
 
@@ -93,6 +93,7 @@ rotate_pipeline = RotationProcessing([
 #extract the single squares from the board, and classify them
 single_squares_pipeline = SingleSquaresProcessing([
     partial(cut_corners, cut_size=singleParams.cut_corners_size),
+    partial(show_current_image, imageTitle="cut corners"),
     partial(save_current_image_in_metadata, fieldName="cut_corners"),
     separate_squares,
     calculate_matrix_representation,
@@ -104,17 +105,17 @@ single_squares_pipeline = SingleSquaresProcessing([
 draw_boxes_pipeline = BoundingBoxes([
     partial(set_current_image, imageFieldName="warped_rotated_image"),
     partial(get_occupied_squares_corners, boardCornerCutSize=singleParams.cut_corners_size),
+    partial(draw_points_from_array, imageTitle="Occupied Squares Corners", pointsFieldName="debug_corners_warped_img", radius=3, thickness=3, color=Utils.color_blue),#, makeColored=True),
     partial(get_pieces_static_bounding_boxes, bbVertFactor=boundingParams.bbVertFactor),
     partial(set_current_image, imageFieldName="og_img"),
-    partial(show_current_image, imageTitle="Og_img", resizeAmount=0.25),
-    partial(gamma_adjust, gamma=boundingParams.gamma),
-    partial(download_current_image, path="temp/gamma_adjust"),
-    partial(show_current_image, imageTitle="Gamma adjust", resizeAmount=0.25),
-    find_piece_contours_in_bounding_boxes,
-    partial(show_current_image, imageTitle="image Kmeans"),
+    partial(bilateral, ksize=boundingParams.bilateral_ksize, sigmaColor=boundingParams.bilateral_sigmaColor), # reduce noise, keeping edges sharp
+    partial(show_current_image, imageTitle="bilateral_og_img", resizeAmount=0.25),
+    partial(gamma_adjust, gamma=boundingParams.gamma, cutoff=boundingParams.cutoff),
+    # partial(download_current_image, path="temp/gamma_03_140_adjust"),
+    partial(show_current_image, imageTitle="gamma", resizeAmount=0.25),
+    partial(refine_bounding_boxes, whiteLowerBound=boundingParams.white_lower_bound, whiteUpperBound=boundingParams.white_upper_bound, blackLowerBound=boundingParams.black_lower_bound, blackUpperBound=boundingParams.black_upper_bound, whiteEdgesErosion=boundingParams.white_edges_erosion, blackEdgesErosion=boundingParams.black_edges_erosion),
     partial(draw_points_from_array, imageTitle="Occupied Squares Corners", pointsFieldName="occupied_squares_corners", radius=10, thickness=10, color=Utils.color_red),#, makeColored=True),
-    partial(draw_rectangles, imageTitle="Occupied Squares Bounding Boxes", fieldName="bounding_boxes", color=Utils.color_green, thickness=2)#, makeColored=True),
-    # show_bounding_box_cuts
+    partial(draw_rectangles, imageTitle="Occupied Squares Bounding Boxes", fieldName="refined_bounding_boxes", color=Utils.color_green, thickness=2)#, makeColored=True),
 ])
 
 pre_proc_imgs = pp_pipeline.apply(read_images())
@@ -129,6 +130,6 @@ rotate_results = rotate_pipeline.apply(squares_and_horse_results)
 single_square_results = single_squares_pipeline.apply(rotate_results)
 final_results = draw_boxes_pipeline.apply(single_square_results)
 
-show_debug_images(squares_results, gridFormat=True, gridImgSize=3, gridSaveFig=False)
+show_debug_images(squares_results, gridFormat=True, gridImgSize=6, gridSaveFig=False)
 # show_images(final_results)
 # test_implementation(single_square_results)
