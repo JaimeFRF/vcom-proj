@@ -141,3 +141,22 @@ def match_histogram_to_ref(data, referenceImgPath):
     data["image"] = match_histograms(data["image"], cv2.imread(referenceImgPath), channel_axis=-1).astype(np.uint8)
     
     return data
+
+#color balance using gray world algorithm
+def white_balance_gray_world(data):
+    result = data["image"].astype(np.float32)
+    avg_b = np.mean(result[:, :, 0])
+    avg_g = np.mean(result[:, :, 1])
+    avg_r = np.mean(result[:, :, 2])
+    avg_gray = (avg_b + avg_g + avg_r) / 3
+
+    scale_b = avg_gray / avg_b
+    scale_g = avg_gray / avg_g
+    scale_r = avg_gray / avg_r
+
+    result[:, :, 0] *= scale_b
+    result[:, :, 1] *= scale_g
+    result[:, :, 2] *= scale_r
+
+    data["image"] = np.clip(result, 0, 255).astype(np.uint8)
+    return data

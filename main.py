@@ -122,8 +122,10 @@ draw_boxes_pipeline = BoundingBoxes([
     partial(bilateral, ksize=boundingParams.bilateral_ksize, sigmaColor=boundingParams.bilateral_sigmaColor), # reduce noise, keeping edges sharp
     partial(show_current_image, imageTitle="bilateral_og_img", resizeAmount=0.25),
     partial(gamma_adjust, gamma=boundingParams.gamma, cutoff=boundingParams.cutoff),
-    # partial(download_current_image, path="temp/gamma_03_140_adjust"),
     partial(show_current_image, imageTitle="gamma", resizeAmount=0.25),
+    # white_balance_gray_world,
+    partial(show_current_image, imageTitle="white_balance_gray_world", resizeAmount=0.25),
+    partial(download_current_image, path="temp/white_bal_gamma_04_200_adjust"),
     partial(draw_contours, imageTitle="Board contour mask", contoursFieldName="board_contour_raw", color=Utils.color_green, thickness=2),
     partial(refine_bounding_boxes, whiteLowerBound=boundingParams.white_lower_bound, whiteUpperBound=boundingParams.white_upper_bound, blackLowerBound=boundingParams.black_lower_bound, blackUpperBound=boundingParams.black_upper_bound, whiteEdgesErosion=boundingParams.white_edges_erosion, blackEdgesErosion=boundingParams.black_edges_erosion, pieceMaskMinArea=boundingParams.piece_min_area, pieceMaskMaxCenterDist=boundingParams.piece_max_center_dist),
     partial(draw_points_from_array, imageTitle="Occupied Squares Corners", pointsFieldName="occupied_squares_corners", radius=10, thickness=10, color=Utils.color_red),#, makeColored=True),
