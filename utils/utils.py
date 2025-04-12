@@ -106,7 +106,7 @@ def draw_points_from_array(data, color=color_green, radius=3, thickness=2, image
     show_image_with_name(data, imageTitle, img)
     return data
 
-#draw crpss for np array over original image, assuming points are multiple of 4, in 2D
+#draw cross for np array over original image, assuming points are multiple of 4, in 2D
 def draw_cross_from_array(data, color=color_green, radius=3, thickness=2, imageTitle="Points", pointsFieldName="keypoints", makeColored=False):
     points = data["metadata"].get(pointsFieldName, None)
     if (points is None):
@@ -186,6 +186,12 @@ def show_metadata_image(data, imageTitle="specified image", resizeAmount=1, imag
     if (img is None):
         raise ValueError(f"Image {imageName} not found in metadata")
     resize_img = cv2.resize(img.copy(), (0, 0), fx=resizeAmount, fy=resizeAmount)
+    show_image_with_name(data, imageTitle, resize_img)
+    return data
+
+# show an image given the direct image data, and the image name
+def _show_provided_image(data,  image, imageTitle="specified image", resizeAmount=1):
+    resize_img = cv2.resize(image.copy(), (0, 0), fx=resizeAmount, fy=resizeAmount)
     show_image_with_name(data, imageTitle, resize_img)
     return data
 

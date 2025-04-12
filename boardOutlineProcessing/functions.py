@@ -72,7 +72,7 @@ def find_countours(data):
     return data
 
 # find the board contour and its corners
-def find_board_countour_and_corners(data, approxPolyDP_epsilon=0.05, min_perim=1000, max_perim=50000):
+def find_board_countour_and_corners(data, approxPolyDP_epsilon=0.05, min_perim=1000, max_perim=50000, boardContourFieldName="board_contour", boardContourRawFieldName="board_contour_raw", boardCornersFieldName="board_corners"):
     find_countours(data)
     contours = data["metadata"].get("contours", None)
 
@@ -84,7 +84,8 @@ def find_board_countour_and_corners(data, approxPolyDP_epsilon=0.05, min_perim=1
     # TODO: is area more robust to calculate instead?
     filtered_countours = [cnt for cnt in contours if min_perim <= cv2.arcLength(cnt, True) <= max_perim]
     
-    board_contour = None
+    board_contour = None # final contour of the board, after applying hull, and approxPolyDP
+    board_contour_raw = None  # raw final contour, without applying hull or approxPolyDP # useful for masking later on on the pipeline
     max_area = 0
     i = 0
     for contour in filtered_countours:
@@ -105,20 +106,22 @@ def find_board_countour_and_corners(data, approxPolyDP_epsilon=0.05, min_perim=1
             if area > max_area:
                 max_area = area
                 board_contour = approx # get the contour with the biggest area, cause the biggest square in the image is the board
-                
+                board_contour_raw = contour # save the selected contour, to be used for masking later on
+
     if board_contour is None:
         raise ValueError("No game board detected.")
     
     corners = board_contour.reshape(4, 2).astype(np.float32)
 
-    data["metadata"]["board_contour"] = [board_contour]
-    data["metadata"]["board_corners"] = corners
+    data["metadata"][boardContourFieldName] = [board_contour]
+    data["metadata"][boardContourRawFieldName] = [board_contour_raw]
+    data["metadata"][boardCornersFieldName] = corners
 
     return data
 
 # given a set of corners, warp the image to a new perspective
-def warp_image_from_board_corners(data, warp_width=500, warp_height=500, warpMatrixFieldName="warp_matrix", imgFieldName="orig_img"):
-    corners = data["metadata"].get("board_corners", None)
+def warp_image_from_board_corners(data, warp_width=500, warp_height=500, warpMatrixFieldName="warp_matrix", imgFieldName="orig_img", boardCornersFieldName="board_corners"):
+    corners = data["metadata"].get(boardCornersFieldName, None)
     if (corners is None):
         raise ValueError("Board corners data must be defined previously in pipeline, in order to warp image")
     

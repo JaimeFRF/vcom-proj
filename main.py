@@ -124,7 +124,8 @@ draw_boxes_pipeline = BoundingBoxes([
     partial(gamma_adjust, gamma=boundingParams.gamma, cutoff=boundingParams.cutoff),
     # partial(download_current_image, path="temp/gamma_03_140_adjust"),
     partial(show_current_image, imageTitle="gamma", resizeAmount=0.25),
-    partial(refine_bounding_boxes, whiteLowerBound=boundingParams.white_lower_bound, whiteUpperBound=boundingParams.white_upper_bound, blackLowerBound=boundingParams.black_lower_bound, blackUpperBound=boundingParams.black_upper_bound, whiteEdgesErosion=boundingParams.white_edges_erosion, blackEdgesErosion=boundingParams.black_edges_erosion),
+    partial(draw_contours, imageTitle="Board contour mask", contoursFieldName="board_contour_raw", color=Utils.color_green, thickness=2),
+    partial(refine_bounding_boxes, whiteLowerBound=boundingParams.white_lower_bound, whiteUpperBound=boundingParams.white_upper_bound, blackLowerBound=boundingParams.black_lower_bound, blackUpperBound=boundingParams.black_upper_bound, whiteEdgesErosion=boundingParams.white_edges_erosion, blackEdgesErosion=boundingParams.black_edges_erosion, pieceMaskMinArea=boundingParams.piece_min_area, pieceMaskMaxCenterDist=boundingParams.piece_max_center_dist),
     partial(draw_points_from_array, imageTitle="Occupied Squares Corners", pointsFieldName="occupied_squares_corners", radius=10, thickness=10, color=Utils.color_red),#, makeColored=True),
     partial(draw_rectangles, imageTitle="Occupied Squares Bounding Boxes", fieldName="refined_bounding_boxes", color=Utils.color_green, thickness=2)#, makeColored=True),
 ])
@@ -143,7 +144,7 @@ single_square_results = single_squares_pipeline.apply(rotate_results)
 final_results = draw_boxes_pipeline.apply(single_square_results)
 
 # test_implementation(final_results)
-show_debug_images(squares_results, gridFormat=True, gridImgSize=6, gridSaveFig=False)
+show_debug_images(squares_results, gridFormat=True, gridImgSize=5, gridSaveFig=False)
 # show_images(final_results)
 # write_results(single_square_results)
 
