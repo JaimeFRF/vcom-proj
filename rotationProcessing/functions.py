@@ -46,7 +46,7 @@ def find_homography_from_matches(data, keypoints1, keypoints2="keypoints", match
     train_pts = np.float32([kp2[m.trainIdx].pt for m in matches]).reshape(-1, 1, 2)  # img2
 
     # Find homography from query (img1) to train (img2)
-    M, _ = cv2.findHomography(query_pts, train_pts, cv2.RANSAC, 2.0)
+    M, _ = cv2.findHomography(query_pts, train_pts, cv2.RANSAC, 1.5) #melhor com 1.5 e cavalinhopequeno3
 
     data["metadata"][homographyTitle_result] = M
     return data
@@ -77,8 +77,8 @@ def extract_rotation_from_homography(data, homographyTitle="homography"):
     if quantized_angle == 360:
         quantized_angle = 0
         
-    print(f"Raw rotation angle: {raw_angle_deg:.2f} degrees")
-    print(f"Quantized rotation angle: {quantized_angle:.0f} degrees")
+    """ print(f"Raw rotation angle: {raw_angle_deg:.2f} degrees")
+    print(f"Quantized rotation angle: {quantized_angle:.0f} degrees") """
     return quantized_angle
 
 def rotate_img_from_homography(data, homographyTitle="homography", rotationMatrixFieldName="rotation_matrix"):

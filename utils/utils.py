@@ -106,6 +106,33 @@ def draw_points_from_array(data, color=color_green, radius=3, thickness=2, image
     show_image_with_name(data, imageTitle, img)
     return data
 
+#draw crpss for np array over original image, assuming points are multiple of 4, in 2D
+def draw_cross_from_array(data, color=color_green, radius=3, thickness=2, imageTitle="Points", pointsFieldName="keypoints", makeColored=False):
+    points = data["metadata"].get(pointsFieldName, None)
+    if (points is None):
+        raise ValueError(f"{pointsFieldName} data must be defined previously in pipeline, in order to draw points")
+    
+    if (points.shape[1] != 2 or len(points.shape) != 2):
+        print(f"{pointsFieldName} data must be 2D array, ignoring drawing for {data['name']}")
+        return data
+    
+    img = data["image"].copy()
+    
+    if (makeColored):
+        img = cv2.cvtColor(img,cv2.COLOR_GRAY2RGB)
+
+    for i in range(0,len(points),4):
+        [x, y] = points[i]
+        [x2, y2] = points[i+1]
+        [x3, y3] = points[i+2]
+        [x4, y4] = points[i+3]
+
+        img = cv2.line(img, (int(x), int(y)), (int(x4), int(y4)), color, thickness)
+        img = cv2.line(img, (int(x2), int(y2)), (int(x3), int(y3)), color, thickness)
+
+    show_image_with_name(data, imageTitle, img)
+    return data
+
 # draw hough lines over original image
 def draw_hough_lines(data, color=color_red, withText=False, textSize=1.5, houghLinesFieldName="lines", imageTitle="Hough Lines"):
     lines = data["metadata"].get(houghLinesFieldName, None) # lines data from previous function in pipeline
@@ -138,12 +165,12 @@ def draw_hough_lines(data, color=color_red, withText=False, textSize=1.5, houghL
     return data
 
 #draw chessboard calculated countours over original image
-def draw_contours(data, imageTitle="Contours", color=color_green, thickness=3, contoursFieldName="board_contour"):
+def draw_contours(data, imageTitle="Contours", color=color_green, thickness=3, contoursFieldName="board_contour", imgName="orig_img"):
     contours = data["metadata"].get(contoursFieldName, None) # contours data from previous function in pipeline
     if (contours is None):
         raise ValueError("Contours data must be defined previously in pipeline, in order to draw contours")
     
-    img = data["orig_img"].copy()
+    img = data[imgName].copy()
     img = cv2.drawContours(img, contours, -1, color, thickness)
     show_image_with_name(data, imageTitle, img)
     return data
@@ -154,11 +181,10 @@ def show_current_image(data, imageTitle="current image", resizeAmount=1):
     show_image_with_name(data, imageTitle, resize_img)
     return data
 
-def show_image_in_metadata(data, imageTitle="metadata image", resizeAmount=1, imgFieldName="image"):
-    img = data["metadata"].get(imgFieldName, None)
+def show_metadata_image(data, imageTitle="specified image", resizeAmount=1, imageName="metadata_img"):
+    img = data["metadata"].get(imageName, None)
     if (img is None):
-        raise ValueError(f"Field {imgFieldName} must be defined previously in pipeline, to show its value")
-    
+        raise ValueError(f"Image {imageName} not found in metadata")
     resize_img = cv2.resize(img.copy(), (0, 0), fx=resizeAmount, fy=resizeAmount)
     show_image_with_name(data, imageTitle, resize_img)
     return data

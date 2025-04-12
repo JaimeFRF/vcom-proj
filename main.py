@@ -11,15 +11,14 @@ from boardOutlineProcessing.functions import *
 import boardOutlineProcessing.parameters as boardOutParams
 from boardOutlineProcessing.boardOutlineProcessing import BoardOutlineProcessing
 from rotationProcessing.functions import *
-import rotationProcessing.parameters as rotParams
 from rotationProcessing.rotationProcessing import RotationProcessing
 from singleSquaresProcessing.functions import *
-import singleSquaresProcessing.parameters as singleParams
 from singleSquaresProcessing.singleSquaresProcessing import SingleSquaresProcessing
 from boundingBoxesNEW.functions import *
 import boundingBoxesNEW.parameters as boundingParams
 from boundingBoxesNEW.boundingBoxesNew import BoundingBoxes
-
+from densityProcessing.densityProcessing import *
+from densityProcessing.functions import *
 
 ## Pipeline Design Pattern -> Só é preciso meter as funções/ordem etc que queremos
 # NOTE: if you want to specify certain attributes in pipeline do partial(func_name, arg1=value1, arg2=value2,...)
@@ -37,6 +36,7 @@ pp_pipeline = PreProcessing([
     partial(save_current_image_in_metadata, fieldName="og_img"),
     # table_segmentation,
     # partial(show_current_image, imageTitle="Prepocessed", resizeAmount=0.25),
+    partial(color_mask,lower_color_bound=preProcParams.lower_color_bound, upper_color_bound=preProcParams.upper_color_bound, mask_edges_erosion=preProcParams.mask_edges_erosion),
     convert_to_gray,
     partial(bilateral, ksize=preProcParams.bilateral_ksize, sigmaColor=preProcParams.bilateral_sigmaColor, sigmaSpace=preProcParams.bilateral_sigmaSpace), # reduce noise, keeping edges sharp
 ])
@@ -45,18 +45,19 @@ pp_pipeline = PreProcessing([
 board_outline_pipeline = BoardOutlineProcessing([
     partial(canny, low=boardOutParams.canny_low_threshold, high=boardOutParams.canny_high_threshold), 
     # partial(show_current_image, imageTitle="Canny Edges", resizeAmount=0.25),
+    apply_mask,
+    # partial(show_current_image, imageTitle="Masked", resizeAmount=0.25),
     partial(dilate_edges, ksize=boardOutParams.dilate_ksize, iterations=boardOutParams.dilate_iterations),
     partial(save_current_image_in_metadata, fieldName="dilated_image"),
     # partial(show_current_image, imageTitle="Canny Dilated", resizeAmount=0.25),
     partial(closing, ksize=boardOutParams.closing_ksize, iterations=boardOutParams.closing_iterations),
     # partial(show_current_image, imageTitle="Canny Dilated Closed", resizeAmount=0.25),
     partial(find_board_countour_and_corners, approxPolyDP_epsilon=boardOutParams.approxPolyDP_epsilon),
-
     # partial(draw_contours, imageTitle="Original with Countors"),
     partial(warp_image_from_board_corners, warp_width=boardOutParams.warp_width, warp_height=boardOutParams.warp_height),
     # partial(hough_lines, rho=boardOutParams.hough_rho, theta=boardOutParams.hough_theta, votes=boardOutParams.hough_votes),
     # partial(draw_hough_lines, color=Utils.color_red, withText=False)
-    partial(show_current_image, imageTitle="Warped image"),
+    # partial(show_current_image, imageTitle="Warped image"),
     partial(save_current_image_in_metadata, fieldName="warped_image"), # save image to metadata to be reused later
 ])
 
@@ -87,25 +88,35 @@ rotate_pipeline = RotationProcessing([
     # draw_crosshair,
     partial(set_current_image, imageFieldName="warped_image"), # set the current image to the previous warped image, to recover colors, before rotation
     rotate_img_from_homography,
-    partial(save_current_image_in_metadata, fieldName="warped_rotated_image"),
+    partial(save_current_image_in_metadata, fieldName="warped_rotated_image")
 ])
 
-#extract the single squares from the board, and classify them
-single_squares_pipeline = SingleSquaresProcessing([
-    partial(cut_corners, cut_size=singleParams.cut_corners_size),
-    partial(show_current_image, imageTitle="cut corners"),
-    partial(save_current_image_in_metadata, fieldName="cut_corners"),
+density_pipeline = DensityProcessing([
+    # partial(show_current_image, imageTitle="Image before density"),
+    convert_to_gray,
+    partial(gaussian, ksize=(5,5)),
+    partial(canny, low=100, high=200), 
+    hough_lines,
+    draw_hough_lines_on_warped_image,
+    calculate_corners,
+    partial(set_current_image, imageFieldName="warped_rotated_image"), 
+    # partial(show_metadata_image, imageTitle="Hough lines on warped image", imageName="line_map"),
+    # partial(draw_contours, imageTitle="Warped with contours from density", imgName="image"),
+    partial(warp_image_from_board_corners, imgFieldName = "image", warp_width=boardOutParams.warp_width, warp_height=boardOutParams.warp_height, warpMatrixFieldName="refined_warp_matrix"),
+    # partial(show_current_image, imageTitle="Warped final pipeline image"),
+    partial(save_current_image_in_metadata, fieldName="final_grid"),
+    convert_to_gray,
     separate_squares,
-    calculate_matrix_representation,
-    partial(print_field_value, fieldName="chessboard_matrix"),
-    partial(print_field_value, fieldName="total_black", withFieldName=True),
-    partial(print_field_value, fieldName="total_white", withFieldName=True)
+])
+
+single_squares_pipeline = SingleSquaresProcessing([
+    calculate_matrix_representation
 ])
 
 draw_boxes_pipeline = BoundingBoxes([
-    partial(set_current_image, imageFieldName="warped_rotated_image"),
-    partial(get_occupied_squares_corners, boardCornerCutSize=singleParams.cut_corners_size),
-    partial(draw_points_from_array, imageTitle="Occupied Squares Corners", pointsFieldName="debug_corners_warped_img", radius=3, thickness=3, color=Utils.color_blue),#, makeColored=True),
+    partial(set_current_image, imageFieldName="final_grid"),
+    get_occupied_squares_corners,
+    partial(draw_cross_from_array, imageTitle="Occupied Squares Corners", pointsFieldName="debug_corners_warped_img", radius=3, thickness=3, color=Utils.color_blue),#, makeColored=True),
     partial(get_pieces_static_bounding_boxes, bbVertFactor=boundingParams.bbVertFactor),
     partial(set_current_image, imageFieldName="og_img"),
     partial(bilateral, ksize=boundingParams.bilateral_ksize, sigmaColor=boundingParams.bilateral_sigmaColor), # reduce noise, keeping edges sharp
@@ -127,9 +138,12 @@ squares_results = board_outline_pipeline.apply(pre_proc_imgs)
 separate_horse_results = separate_horse_pipeline.apply(read_single_image("our_images/cavalinhoPequeno.jpg"))[0]
 squares_and_horse_results = MetadataMerger.merge_pipelines_metadata(squares_results, separate_horse_results)
 rotate_results = rotate_pipeline.apply(squares_and_horse_results)
+density_results = density_pipeline.apply(rotate_results)
 single_square_results = single_squares_pipeline.apply(rotate_results)
 final_results = draw_boxes_pipeline.apply(single_square_results)
 
+# test_implementation(final_results)
 show_debug_images(squares_results, gridFormat=True, gridImgSize=6, gridSaveFig=False)
 # show_images(final_results)
-# test_implementation(single_square_results)
+# write_results(single_square_results)
+

@@ -43,9 +43,11 @@ def equalizeHist(data):
     data["image"] = cv2.equalizeHist(data["image"])
     return data
 
-def table_segmentation(data, lower_color_bound=(150,100,50), upper_color_bound=(200, 150, 100)):
+# calculate a convex hull mask for a certain color range, from the current image
+# Ex: for identifying the table region
+def color_mask(data, lower_color_bound=(10, 50, 60), upper_color_bound=(20, 255, 255), mask_edges_erosion=10, colorMaskFieldTitle="color_mask"):
 
-    hsv = cv2.cvtColor(data["orig_img"], cv2.COLOR_BGR2HSV)
+    hsv = cv2.cvtColor(data["image"], cv2.COLOR_BGR2HSV)
     
     # assuming board is always in a table with orangeish colors, filter out the rest of the image that isn't part of the table
     lower_bound = np.array(list(lower_color_bound))
@@ -53,11 +55,45 @@ def table_segmentation(data, lower_color_bound=(150,100,50), upper_color_bound=(
     
     # Create a mask for the board
     mask = cv2.inRange(hsv, lower_bound, upper_bound)
-    # Apply the mask to the image
-    data["image"] = cv2.bitwise_and(data["image"], data["image"], mask=mask)
-    cv2.imshow("color segmented", data["image"])
-    cv2.waitKey(0)
+
+    _,thresh = cv2.threshold(mask, 40, 255, 0)
+
+    # opening over the thresholded image, to remove residual noise from mask
+    kernel = np.ones(11, np.uint8)
+    eroded_thresh = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel, iterations=5)
+
+    contours, hierarchy = cv2.findContours(eroded_thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+    if (len(contours) == 0):
+        raise ValueError("No contours detected, so can't find board contour and corners")
     
+    # grab the biggest contour, which should be the table
+    biggest_contour = max(contours, key = cv2.contourArea)
+
+    # find the convex hull of the contour, to compensate for any brightness noise inside the table region
+    hull = cv2.convexHull(biggest_contour) 
+
+    #create mask for the convex hull
+    mask = np.zeros((data["image"].shape[0], data["image"].shape[1]), dtype=np.uint8)
+    cv2.drawContours(mask, [hull], -1, (255,255,255), -1)
+    
+    # reduce mask in edges, with erosion, so when we apply it later, it also excludes the table edges (from which we calculated this mask)
+    kernel = np.ones(5, np.uint8)
+    eroded_mask = cv2.erode(mask, kernel, iterations=mask_edges_erosion)
+
+    # result = cv2.add(table_section, solid_color_section)
+    data["metadata"][colorMaskFieldTitle] = eroded_mask
+
+    return data
+
+#apply a single channel mask to a greyscale image
+def apply_mask(data, maskFieldTitle="color_mask", imageFieldTitle=None):
+    mask = data["metadata"].get(maskFieldTitle, None)
+    if (mask is None):
+        raise ValueError("No mask found in metadata")
+
+    data["image"] = cv2.bitwise_and(data["image"], data["image"], mask=mask)
+    return data
+
     return data
 
 # CLAHE, in YUV color space

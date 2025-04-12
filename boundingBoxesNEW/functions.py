@@ -6,47 +6,50 @@ import singleSquaresProcessing.parameters as singleParams
 
 # cornerCutSize -> size of the corners previously cut from the image
 # resultsMatrixFieldName -> name of the field in metadata where the results matrix were stored
-# warpMatrixFieldName -> name of the field in metadata where the warp matrix used to obtain the straight grid layout previously were stored
+# firstwarpMatrixFieldName -> name of the field in metadata where the first warp matrix used to obtain the near straight grid layout previously was stored
+# secondWarpMatrixFieldName -> name of the field in metadata where the second warp matrix used to obtain the final straight grid layout previously was stored
 # rotationMatrixFieldName -> name of the field in metadata where the rotation matrix calculated from little horse was stored
 # cornersFieldName -> name of the field in metadata where the occupied squares corners will be stored
-def get_occupied_squares_corners(data, boardCornerCutSize=0, resultsMatrixFieldName="chessboard_matrix", warpMatrixFieldName="warp_matrix", rotationMatrixFieldName="rotation_matrix", cornersFieldName="occupied_squares_corners"):
+def get_occupied_squares_corners(data, resultsMatrixFieldName="chessboard_matrix", firstWarpMatrixFieldName="warp_matrix", secondWarpMatrixFieldName="refined_warp_matrix", rotationMatrixFieldName="rotation_matrix", cornersFieldName="occupied_squares_corners"):
     results_matrix = data["metadata"].get(resultsMatrixFieldName, None)
-    warp_matrix = data["metadata"].get(warpMatrixFieldName, None)
+    warp_matrix_1 = data["metadata"].get(firstWarpMatrixFieldName, None)
+    warp_matrix_2 = data["metadata"].get(secondWarpMatrixFieldName, None)
     rotation_matrix_2d = data["metadata"].get(rotationMatrixFieldName, None)
     
     if results_matrix is None:
         raise ValueError("Results matrix data must be defined previously in pipeline, in order to get occupied squares corners")
-    if warp_matrix is None:
-        raise ValueError("Warp matrix data must be defined previously in pipeline, in order to get occupied squares corners")
+    if warp_matrix_1 is None or warp_matrix_2 is None:
+        raise ValueError("Warp matrixes data must be defined previously in pipeline, in order to get occupied squares corners")
     if rotation_matrix_2d is None: 
         raise ValueError("Rotation matrix data must be defined previously in pipeline, in order to get occupied squares corners")
 
     img_h, img_w = data["image"].shape[:2]
-    square_h, square_w = (img_h - boardCornerCutSize * 2) // 8, (img_w - boardCornerCutSize * 2) // 8
+    square_h, square_w = img_h// 8, img_w // 8
 
     #3x3 matrix for 2d affine
     rotation_matrix_3d = np.vstack([rotation_matrix_2d, [0,0,1]])
 
+    inv_warp_matrix_2 = np.linalg.inv(warp_matrix_2) # used for the last un-warping step in the image
     inv_rotation_matrix = np.linalg.inv(rotation_matrix_3d) # used for un-rotating the image
-    inv_warp_matrix = np.linalg.inv(warp_matrix) # used for un-warping the image
+    inv_warp_matrix_1 = np.linalg.inv(warp_matrix_1) # used for initial un-warping the image
 
-    final_matrix = inv_warp_matrix @ inv_rotation_matrix #final matrix to apply, that inverts both transformations # first undo the rotation, then undo the warping
+    final_matrix = inv_warp_matrix_1 @ inv_rotation_matrix @ inv_warp_matrix_2 #final matrix to apply, that inverts both transformations # first undo the rotation, then undo the warping
 
     #calculate corners of occupied squares
     final_squares_corners = []
     for row in range(8):
         for col in range(8):
-            if results_matrix[row][col] != 0:
+            if results_matrix[7- row][col] != 0: # we read the matrix from bottom to top, so we need to invert the row index
 
                 #calculate the corners of the occupied square
-                x1 = boardCornerCutSize + col * square_w
-                y1 = boardCornerCutSize + row * square_h
+                x1 = col * square_w
+                y1 = row * square_h
                 x2 = x1 + square_w
                 y2 = y1 + square_h
 
                 #add additional dimension for matrix multiplication (top_left, top_right, bottom_left, bottom_right)
                 final_squares_corners.extend([[x1, y1, 1], [x2, y1, 1], [x1, y2, 1], [x2, y2, 1]])
-    
+
     if not final_squares_corners:
         data["metadata"][cornersFieldName] = np.empty((0, 2))
         data["metadata"]["debug_corners_warped_img"] = np.empty((0, 2))
@@ -119,7 +122,7 @@ def get_pieces_static_bounding_boxes(data, cornersFieldName="occupied_squares_co
 # blackEdgesErosion: size of the kernel for the black piece edges erosion
 # resultsMatrixFieldName: name of the field in metadata where the results matrix was stored
 
-def refine_bounding_boxes(data, bbFieldName="bounding_boxes", refinedBbFieldName="refined_bounding_boxes", whiteLowerBound=(20, 60, 50), whiteUpperBound=(25, 150, 255), blackLowerBound=(10, 50, 60), blackUpperBound=(20, 255, 255), whiteEdgesErosion=5, blackEdgesErosion=5, resultsMatrixFieldName="chessboard_matrix"):
+def refine_bounding_boxes(data, bbFieldName="bounding_boxes", refinedBbFieldName="refined_bounding_boxes", whiteLowerBound=(20, 60, 50), whiteUpperBound=(25, 150, 255), blackLowerBound=(10, 50, 60), blackUpperBound=(20, 255, 255), whiteEdgesErosion=5, blackEdgesErosion=5, pieceMaskMinArea=4000, pieceMaskMaxCenterDist=0.25, resultsMatrixFieldName="chessboard_matrix"):
     bboxes = data["metadata"].get(bbFieldName, None)
     if (bboxes is None):
         raise ValueError("Bounding boxes data must be defined previously in pipeline, in order to find piece contours")
@@ -131,21 +134,30 @@ def refine_bounding_boxes(data, bbFieldName="bounding_boxes", refinedBbFieldName
     results_matrix = data["metadata"].get(resultsMatrixFieldName, None)
     if (results_matrix is None):
         raise ValueError(f"{resultsMatrixFieldName} data must be defined previously in pipeline, in order to find piece contours")
-    
-    hsv_image = cv2.cvtColor(data["image"], cv2.COLOR_BGR2HSV)
 
-    #remove all 0s and flatten results matrix, to get only the color of the occupied squares
+    #flip the results matrix to match the image orientation
+    results_matrix = np.flipud(results_matrix)
+    # remove all 0s and flatten results matrix, to get only the color of the occupied squares
     occupied_squares = results_matrix[results_matrix != 0]
-    print("occupied_squares", occupied_squares)
+    # print("up-down, left-right reading")
+    # print("occupied_squares", occupied_squares)
+
     refined_bboxes = []
 
-    # cv2.imshow("og_img", data["image"])
+    cv2.imshow("og_img", data["image"])
+
+    white_mask = _get_color_mask(data["image"], lowerBound=whiteLowerBound, upperBound=whiteUpperBound, kernelFactor=whiteEdgesErosion, iterFactor=5, morphologyType=cv2.MORPH_OPEN)
+    black_mask = _get_color_mask(data["image"], lowerBound=blackLowerBound, upperBound=blackUpperBound, kernelFactor=blackEdgesErosion, iterFactor=5, morphologyType=cv2.MORPH_CLOSE)
+    
+    cv2.imshow("white_mask", white_mask)
+    cv2.imshow("black_mask", black_mask)
+    cv2.waitKey(0)
 
     for i, bbox in enumerate(bboxes):
         x1, y1, x2, y2 = bbox
         # get the bounding box of the piece
         piece_bbox = data["image"][y1:y2, x1:x2]
-        # cv2.imshow("piece_bbox", piece_bbox)
+        cv2.imshow("piece_bbox", piece_bbox)
         
         piece_mask = None
         refined_bbox = None
@@ -162,15 +174,15 @@ def refine_bounding_boxes(data, bbFieldName="bounding_boxes", refinedBbFieldName
         # cv2.waitKey(0)
         
         #find best contour from image mask mask
-        best_contour = _find_best_contour(piece_mask)
+        best_contour = _find_best_contour(piece_mask, min_area=pieceMaskMinArea, max_center_dist=pieceMaskMaxCenterDist)
 
         if (best_contour is None):
-            # print("No good contours detected, using previous bbox")
+            print("No good contours detected, using previous bbox")
             refined_bboxes.append(bbox)
             continue
     
         x,y,w,h = cv2.boundingRect(best_contour) # get the bounding box of the biggest contour
-        refined_bbox = [x, y, x + w, y + h]
+        refined_bbox = [x + x1, y + y1, x + x1 + w, y + y1 + h] # add the offset of the original bounding box to the new bounding box
         refined_bboxes.append(refined_bbox)
 
     data["metadata"][refinedBbFieldName] = refined_bboxes
@@ -199,7 +211,7 @@ def _find_best_contour(piece_mask, min_area=4000, max_center_dist=0.25):
     
     h, w = piece_mask.shape[:2]
     center = (w // 2, h // 2)
-    best_contour = None
+    best_contour = None # for debug, can be removed later
     best_area = float(0)
 
     for cnt in contours:
@@ -208,21 +220,22 @@ def _find_best_contour(piece_mask, min_area=4000, max_center_dist=0.25):
         cx, cy = x + bw/2, y + bh/2
         area = cv2.contourArea(cnt)
         dist = np.linalg.norm(center - np.array([cx, cy])) / max(w, h) # calculate distance from center of image to center of contour
-        # print("area-dist", area, dist)
+
         temp_mask = cv2.cvtColor(piece_mask, cv2.COLOR_GRAY2BGR)
         temp_mask = cv2.drawContours(temp_mask, [cnt], -1, (0, 0, 255), 3)
-        # cv2.imshow("contour", temp_mask)
-        # cv2.waitKey(0)
 
         if dist < max_center_dist and area > min_area and area > best_area:
             best_area = area
             best_contour = cnt
 
     if best_contour is None:
-        # print("No contours found")
+        print("No contours found")
         return None
     
     # draw the biggest contour on the image
-    # piece_mask= cv2.drawContours(piece_mask, [cnt], -1, (0, 255, 0), 3)
-    # cv2.imshow("biggest_contour", piece_mask)
+    temp_mask = cv2.cvtColor(piece_mask, cv2.COLOR_GRAY2BGR)
+    temp_mask = cv2.drawContours(temp_mask, [best_contour], -1, (0, 255, 0), 3)
+    # cv2.imshow("biggest_contour", temp_mask)
     # cv2.waitKey(0)
+
+    return best_contour

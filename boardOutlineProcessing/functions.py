@@ -1,6 +1,4 @@
 import cv2
-import boardOutlineProcessing.parameters as BoardOutlineProcParams
-import utils.utils as Utils
 import math
 import numpy as np
 
@@ -16,7 +14,7 @@ def canny(data, low=100, high=200):
     return data
 
 # detect lines, from edges of image
-def hough_lines(data, rho=1, theta=math.pi / 180, votes=50):
+def hough_lines(data, rho=1, theta=math.pi / 180, votes=150):
     lines = cv2.HoughLines(
         data["image"],
         rho, # resolution in pixels of the Hough grid -> higher value more precise distances of lines
@@ -118,61 +116,8 @@ def find_board_countour_and_corners(data, approxPolyDP_epsilon=0.05, min_perim=1
 
     return data
 
-# find the board contour and its corners
-def find_board_countour_and_corners_2(data, approxPolyDP_epsilon=0.05, min_perim=1000, max_perim=50000, boardContourFieldName="board_contour", boardCornersFieldName="board_corners"):
-    contours, _ = cv2.findContours(data["image"], cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    data["metadata"]["contours"] = contours
-    contours = data["metadata"].get("contours", None)
-
-        # the board is a big part of the images, so its permieter should have a certain range
-        # this way we remove small noise contours that are identified
-    filtered_contours = [cnt for cnt in contours if min_perim <= cv2.arcLength(cnt, True) <= max_perim]
-
-    board_contour = None
-    max_area = 0
-    i = 0
-
-    for contour in filtered_contours:
-        # Get convex hull because it works better
-        # source https://docs.opencv.org/3.4/dd/d49/tutorial_py_contour_features.html
-        hull = cv2.convexHull(contour) # convex hull surrounding contour
-        peri = cv2.arcLength(contour, True) # perimeter of the contour
-        
-        #debug temp
-        contoured_img = cv2.drawContours(data["orig_img"].copy(), [contour], -1, (0, 255, 0), 3)
-        cv2.imshow("contour", contoured_img)
-
-        # https://docs.opencv.org/3.4/dd/d49/tutorial_py_contour_features.html
-        approx = cv2.approxPolyDP(hull, approxPolyDP_epsilon * peri, True)  # simplify countour # higher epsilon -> less vertices -> better board shape approximation
-        
-        #debug temp
-        contoured_img = cv2.drawContours(data["orig_img"].copy(), [approx], -1, (255, 0, 255), 3)
-        cv2.imshow("contour_approx", contoured_img)
-        cv2.waitKey(0)
-
-        approx = cv2.approxPolyDP(hull, approxPolyDP_epsilon * peri, True)  # simplify countour # higher epsilon -> less vertices -> better board shape approximation
-
-        # if the final contour is a polygon with 4 sides (a square in perspective)
-        if len(approx) == 4:
-            i += 1
-            # print("Contour" + str(i))
-            area = cv2.contourArea(contour) # calculate area of contour
-            if area > max_area:
-                max_area = area
-                board_contour = approx # get the contour with the biggest area, cause the biggest square in the image is the board
-                
-    if board_contour is None:
-        raise ValueError("No game board detected.")
-    
-    corners = board_contour.reshape(4, 2).astype(np.float32)
-
-    data["metadata"][boardContourFieldName] = [board_contour]
-    data["metadata"][boardCornersFieldName] = corners
-
-    return data
-
 # given a set of corners, warp the image to a new perspective
-def warp_image_from_board_corners(data, warp_width=500, warp_height=500, warpMatrixFieldName="warp_matrix"):
+def warp_image_from_board_corners(data, warp_width=500, warp_height=500, warpMatrixFieldName="warp_matrix", imgFieldName="orig_img"):
     corners = data["metadata"].get("board_corners", None)
     if (corners is None):
         raise ValueError("Board corners data must be defined previously in pipeline, in order to warp image")
@@ -180,7 +125,7 @@ def warp_image_from_board_corners(data, warp_width=500, warp_height=500, warpMat
     # define the destination points for the perspective transform
     dst_points = np.array([[0, 0], [warp_width-1, 0], [warp_width-1, warp_height-1], [0, warp_height-1]], dtype=np.float32)
     matrix = cv2.getPerspectiveTransform(corners, dst_points)
-    warped = cv2.warpPerspective(data["orig_img"].copy(), matrix, (warp_width, warp_height))
+    warped = cv2.warpPerspective(data[imgFieldName].copy(), matrix, (warp_width, warp_height))
     
     data["image"] = warped
     data["metadata"][warpMatrixFieldName] = matrix
