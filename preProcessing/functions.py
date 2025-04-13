@@ -160,3 +160,8 @@ def white_balance_gray_world(data):
 
     data["image"] = np.clip(result, 0, 255).astype(np.uint8)
     return data
+
+def log_transform(data, c=1):
+    data["image"] = c * np.log(data["image"] + 1)
+    data["image"] = np.uint8(data["image"])
+    return data

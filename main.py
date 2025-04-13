@@ -55,9 +55,6 @@ board_outline_pipeline = BoardOutlineProcessing([
     partial(find_board_countour_and_corners, approxPolyDP_epsilon=boardOutParams.approxPolyDP_epsilon),
     # partial(draw_contours, imageTitle="Original with Countors"),
     partial(warp_image_from_board_corners, warp_width=boardOutParams.warp_width, warp_height=boardOutParams.warp_height),
-    # partial(hough_lines, rho=boardOutParams.hough_rho, theta=boardOutParams.hough_theta, votes=boardOutParams.hough_votes),
-    # partial(draw_hough_lines, color=Utils.color_red, withText=False)
-    # partial(show_current_image, imageTitle="Warped image"),
     partial(save_current_image_in_metadata, fieldName="warped_image"), # save image to metadata to be reused later
 ])
 
@@ -101,7 +98,7 @@ density_pipeline = DensityProcessing([
     calculate_corners,
     partial(set_current_image, imageFieldName="warped_rotated_image"), 
     # partial(show_metadata_image, imageTitle="Hough lines on warped image", imageName="line_map"),
-    # partial(draw_contours, imageTitle="Warped with contours from density", imgName="image"),
+    # partial(draw_contours, imageTitle="Warped with contours from density", imgName="image", contoursFieldName="board_contour_warped"),
     partial(warp_image_from_board_corners, imgFieldName = "image", warp_width=boardOutParams.warp_width, warp_height=boardOutParams.warp_height, warpMatrixFieldName="refined_warp_matrix"),
     # partial(show_current_image, imageTitle="Warped final pipeline image"),
     partial(save_current_image_in_metadata, fieldName="final_grid"),
@@ -123,11 +120,11 @@ draw_boxes_pipeline = BoundingBoxes([
     partial(show_current_image, imageTitle="bilateral_og_img", resizeAmount=0.25),
     partial(gamma_adjust, gamma=boundingParams.gamma, cutoff=boundingParams.cutoff),
     partial(show_current_image, imageTitle="gamma", resizeAmount=0.25),
-    # white_balance_gray_world,
-    partial(show_current_image, imageTitle="white_balance_gray_world", resizeAmount=0.25),
-    partial(download_current_image, path="temp/white_bal_gamma_04_200_adjust"),
-    partial(draw_contours, imageTitle="Board contour mask", contoursFieldName="board_contour_raw", color=Utils.color_green, thickness=2),
-    partial(refine_bounding_boxes, whiteLowerBound=boundingParams.white_lower_bound, whiteUpperBound=boundingParams.white_upper_bound, blackLowerBound=boundingParams.black_lower_bound, blackUpperBound=boundingParams.black_upper_bound, whiteEdgesErosion=boundingParams.white_edges_erosion, blackEdgesErosion=boundingParams.black_edges_erosion, pieceMaskMinArea=boundingParams.piece_min_area, pieceMaskMaxCenterDist=boundingParams.piece_max_center_dist),
+    # partial(download_current_image, path="temp/gamma_038_256_adjust"),
+    partial(draw_contours, imageTitle="Board contour mask", contoursFieldName="board_contour", color=Utils.color_red, thickness=5),
+    partial(draw_contours, imageTitle="Board contour raw mask", contoursFieldName="board_contour_raw", color=Utils.color_red, thickness=5),
+
+    partial(refine_bounding_boxes, whiteLowerBound=boundingParams.white_lower_bound, whiteUpperBound=boundingParams.white_upper_bound, blackLowerBound=boundingParams.black_lower_bound, blackUpperBound=boundingParams.black_upper_bound, whiteEdgesKernel=boundingParams.white_edges_kernel, blackEdgesKernel=boundingParams.black_edges_kernel, pieceMaskMinArea=boundingParams.piece_min_area, pieceMaskMaxCenterDist=boundingParams.piece_max_center_dist),
     partial(draw_points_from_array, imageTitle="Occupied Squares Corners", pointsFieldName="occupied_squares_corners", radius=10, thickness=10, color=Utils.color_red),#, makeColored=True),
     partial(draw_rectangles, imageTitle="Occupied Squares Bounding Boxes", fieldName="refined_bounding_boxes", color=Utils.color_green, thickness=2)#, makeColored=True),
 ])
@@ -145,8 +142,8 @@ density_results = density_pipeline.apply(rotate_results)
 single_square_results = single_squares_pipeline.apply(rotate_results)
 final_results = draw_boxes_pipeline.apply(single_square_results)
 
-# test_implementation(final_results)
+test_implementation(final_results)
 show_debug_images(squares_results, gridFormat=True, gridImgSize=5, gridSaveFig=False)
 # show_images(final_results)
-# write_results(single_square_results)
+write_results(single_square_results)
 

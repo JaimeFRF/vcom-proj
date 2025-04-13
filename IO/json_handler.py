@@ -1,4 +1,5 @@
 import json, cv2
+import re
 
 #Stores an array of tuples with the image name and the object image
 def read_images():
@@ -35,8 +36,6 @@ def read_results():
     } for i in data]
     return solutions_dict
 
-
-#TODO: MISSING DETECTED PIECES
 def write_results(data):
 
     write_data = []
@@ -47,13 +46,40 @@ def write_results(data):
         write_data.append({
             "image" : "images/{name}".format(name=i["name"]),
             "num_pieces" : i["metadata"]["total_black"] + i["metadata"]["total_white"],
-            "board": matrix.tolist()
+            "board": matrix.tolist(),
+            "detected_pieces": format_bboxes(i["metadata"]["refined_bounding_boxes"]),
         })
 
-    json_string = json.dumps(write_data, indent=4, separators=(',', ': '))
-    json_string = json_string.replace('\n            [', ' [').replace('\n                ', ' ').replace('\n            ]', ' ]')
+    json_string = json.dumps(write_data, indent=4)
 
+    def collapse_board_arrays(match):
+        # extract content inside the brackets
+        content = match.group(1)
+        # remove newlines and extra spaces
+        content = re.sub(r'\s*\n\s*', '', content)
+        # spacing after commas
+        content = re.sub(r',\s*', ', ', content.strip())
+        return f"[{content}]"
+    
+    # collpase 2d board rows into one line, like in the example output file
+    json_string = re.sub(r'\[\s*(\d+(?:,\s*\d+)*)\s*\]', collapse_board_arrays, json_string)
+    
     with open("output.json", "w") as f:
         f.write(json_string)
 
     return 0
+
+#format array of bounding boxes to a list of dictionaries
+def format_bboxes(array):
+    result_list = []
+    for bbox in array:
+        xmin, ymin, xmax, ymax = bbox
+        bbox_dict = {
+            "xmin": int(xmin),
+            "ymin": int(ymin),
+            "xmax": int(xmax),
+            "ymax": int(ymax)
+        }
+
+        result_list.append(bbox_dict)
+    return result_list
