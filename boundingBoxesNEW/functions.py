@@ -52,7 +52,6 @@ def get_occupied_squares_corners(data, resultsMatrixFieldName="chessboard_matrix
 
     if not final_squares_corners:
         data["metadata"][cornersFieldName] = np.empty((0, 2))
-        data["metadata"]["debug_corners_warped_img"] = np.empty((0, 2))
         print("No occupied squares found in results_matrix; cannot compute corners.")
         return data
 
@@ -63,7 +62,6 @@ def get_occupied_squares_corners(data, resultsMatrixFieldName="chessboard_matrix
     transformed_final_squares_corners = (transformed_final_squares_corners[:2, :] / transformed_final_squares_corners[2, :]).T # shape(N,2)
 
     data["metadata"][cornersFieldName] = transformed_final_squares_corners
-    data["metadata"]["debug_corners_warped_img"] = (final_squares_corners[:2, :] / final_squares_corners[2, :]).T
     return data
 
 # given a set of occupied tile corners, calculate the initial static bounding boxes for each of those tile's pieces (based on static dimensions)
@@ -148,27 +146,8 @@ def refine_bounding_boxes(data, bbFieldName="bounding_boxes", rawContourFieldNam
 
     # remove all 0s and flatten results matrix, to get only the color of the occupied squares
     occupied_squares = results_matrix[results_matrix != 0]
-    # print("up-down, left-right reading")
-    # print("occupied_squares", occupied_squares)
 
     refined_bboxes = []
-
-    #debug
-    white_orig, white_mask = _get_color_mask_debug(data["image"], None, lowerBound=whiteLowerBound, upperBound=whiteUpperBound, kernelFactor=whiteEdgesKernel, iterFactor=5, morphologyType=cv2.MORPH_OPEN)
-    white_mask_cropped = _get_color_mask(data["image"], board_mask, lowerBound=whiteLowerBound, upperBound=whiteUpperBound, kernelFactor=whiteEdgesKernel, iterFactor=5, morphologyType=cv2.MORPH_OPEN) # crop the white mask with the board outline
-    black_mask = _get_color_mask(data["image"], None, lowerBound=blackLowerBound, upperBound=blackUpperBound, kernelFactor=blackEdgesKernel, iterFactor=3, morphologyType=cv2.MORPH_CLOSE)
-    black_mask_cropped = _get_color_mask(data["image"], board_mask, lowerBound=blackLowerBound, upperBound=blackUpperBound, kernelFactor=blackEdgesKernel, iterFactor=5, morphologyType=cv2.MORPH_CLOSE) # crop the black mask with the board outline
-    black_mask_cropped_2 = _apply_morphology_ex(black_mask_cropped)
-
-    # cv2.imshow("white_cropped", white_mask_cropped)
-    # cv2.imshow("black_cropped_2", black_mask_cropped_2)
-
-    # Utils._show_provided_image(data,  white_orig, "Orig White Mask",resizeAmount=0.25)
-    Utils._show_provided_image(data,  white_mask, "White Mask",resizeAmount=0.25)
-    Utils._show_provided_image(data,  white_mask_cropped, "White Mask Crop", resizeAmount=0.25)
-    # Utils._show_provided_image(data,  black_mask, "Black Mask", resizeAmount=0.25)
-    # Utils._show_provided_image(data,  black_mask_cropped, "Black Mask Crop", resizeAmount=0.25)
-    Utils._show_provided_image(data,  black_mask_cropped_2, "Black Mask Crop 2", resizeAmount=0.25)
 
     for i, bbox in enumerate(bboxes):
         x1, y1, x2, y2 = bbox
@@ -210,7 +189,6 @@ def refine_bounding_boxes(data, bbFieldName="bounding_boxes", rawContourFieldNam
         
         #find best contour from image mask mask
         if (best_contour is None):
-            print("No good contours detected, using previous bbox")
             refined_bboxes.append(bbox)
             continue
     
@@ -246,21 +224,6 @@ def _get_color_mask(image, board_mask=None, lowerBound=(0,0,0), upperBound=(128,
 
     return thresh
 
-def _get_color_mask_debug(image, board_mask=None, lowerBound=(0,0,0), upperBound=(128,128,128), kernelType=cv2.MORPH_ELLIPSE, kernelFactor=(5,5), iterFactor=3, morphologyType=cv2.MORPH_OPEN):
-    
-    hsv_image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-    
-    mask = cv2.inRange(hsv_image, np.array(list(lowerBound)), np.array(list(upperBound)))
-    _, thresh = cv2.threshold(mask, 0, 255, 0)
-
-    # Crop the threshold mask with the board region mask
-    if (board_mask is not None):
-        thresh = cv2.bitwise_and(thresh, board_mask)
-    
-    kernel = cv2.getStructuringElement(kernelType, kernelFactor)
-    thresh_2 = cv2.morphologyEx(thresh, morphologyType, kernel, iterations=iterFactor) # we open because complete white pieces are easy to detect, so we just want to remove the noise
-
-    return thresh, thresh_2
 #apply morphological operation to the mask (used specifically for dark pieces mask)
 def _apply_morphology_ex(mask, kernelType=cv2.MORPH_ELLIPSE, kernelSize=(5,5), iterations=5, morphologyType=cv2.MORPH_OPEN):
 
@@ -287,27 +250,12 @@ def _find_best_contour(piece_mask, min_area=4000, max_center_dist=0.25):
         area = cv2.contourArea(cnt)
         dist = np.linalg.norm(center - np.array([cx, cy])) / max(w, h) # calculate distance from center of image to center of contour
 
-        temp_mask = cv2.cvtColor(piece_mask, cv2.COLOR_GRAY2BGR)
-        temp_mask = cv2.drawContours(temp_mask, [cnt], -1, (0, 0, 255), 3)
-
-        # cv2.imshow("contour", temp_mask)
-        # print("area", area)
-        # cv2.waitKey(0)
-
         if dist < max_center_dist and area > min_area and area > best_area:
             best_area = area
             best_contour = cnt
 
     if best_contour is None:
         return None
-    
-    # print("best_area", best_area)
-    # debug
-    # draw the biggest contour on the image
-    temp_mask = cv2.cvtColor(piece_mask, cv2.COLOR_GRAY2BGR)
-    temp_mask = cv2.drawContours(temp_mask, [best_contour], -1, (0, 255, 0), 3)
-    # cv2.imshow("biggest_contour", temp_mask)
-    # cv2.waitKey(0)
 
     return best_contour
 
