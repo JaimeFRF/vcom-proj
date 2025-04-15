@@ -6,8 +6,8 @@ def read_images():
     data = json.load(open("input.json"))
     images_dict = [{
         "name": i, 
-        "image": cv2.imread("images/{name}".format(name=i)), # this one is to apply the operations 
-        "orig_img": cv2.imread("images/{name}".format(name=i)), # this one is to keep the original image
+        "image": cv2.imread("{name}".format(name=i)), # this one is to apply the operations 
+        "orig_img": cv2.imread("{name}".format(name=i)), # this one is to keep the original image
         "debug": [], # store debug images here, to print at the end in a single window
         "metadata": {}
         } 
@@ -44,7 +44,7 @@ def write_results(data):
         matrix[matrix == 2] = 1  
     
         write_data.append({
-            "image" : "images/{name}".format(name=i["name"]),
+            "image" : "{name}".format(name=i["name"]),
             "num_pieces" : i["metadata"]["total_black"] + i["metadata"]["total_white"],
             "board": matrix.tolist(),
             "detected_pieces": format_bboxes(i["metadata"]["refined_bounding_boxes"]),
