@@ -1,5 +1,7 @@
 import cv2
 import numpy as np
+from skimage.exposure import match_histograms
+
 
 #reduce noise with smoothing, but lose edges quality
 def gaussian(data, ksize =(5, 5)):
@@ -90,4 +92,76 @@ def apply_mask(data, maskFieldTitle="color_mask", imageFieldTitle=None):
         raise ValueError("No mask found in metadata")
 
     data["image"] = cv2.bitwise_and(data["image"], data["image"], mask=mask)
+    return data
+
+    return data
+
+# CLAHE, in YUV color space
+def clahe2(data, clipLimit=3.0, tileGridSize=(8, 8)):
+    # yuv color space
+    yuv = cv2.cvtColor(data["image"], cv2.COLOR_BGR2YUV)
+
+    y, u, v = cv2.split(yuv)
+    
+    # clahe to y channel
+    clahe = cv2.createCLAHE(clipLimit=clipLimit, tileGridSize=tileGridSize)
+    y = clahe.apply(y)
+    
+    # Merge the channels back
+    yuv = cv2.merge((y, u, v))
+    
+    # Convert back to BGR color space
+    data["image"] = cv2.cvtColor(yuv, cv2.COLOR_YUV2BGR)
+    
+    return data
+
+def gamma_adjust(data, gamma=0.4, cutoff=128):
+     # LUT: 0–255 -> new value
+    lookUpTable = np.empty(256, dtype=np.uint8)
+    
+    for i in range(256):
+        if i < cutoff:
+            # apply gamma to dark areas
+            lookUpTable[i] = np.clip(pow(i / 255.0, gamma) * 255.0, 0, 255)
+        else:
+            # leave bright areas untouched (linear)
+            lookUpTable[i] = i
+    
+    hsv = cv2.cvtColor(data["image"], cv2.COLOR_BGR2HSV)
+    h, s, v = cv2.split(hsv)
+    v = cv2.LUT(v, lookUpTable)
+    hsv = cv2.merge([h, s, v])
+
+    data["image"] = cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)
+
+    return data
+
+# match the histogram of the image to a reference image
+def match_histogram_to_ref(data, referenceImgPath):
+    data["image"] = match_histograms(data["image"], cv2.imread(referenceImgPath), channel_axis=-1).astype(np.uint8)
+    
+    return data
+
+#color balance using gray world algorithm
+def white_balance_gray_world(data):
+    result = data["image"].astype(np.float32)
+    avg_b = np.mean(result[:, :, 0])
+    avg_g = np.mean(result[:, :, 1])
+    avg_r = np.mean(result[:, :, 2])
+    avg_gray = (avg_b + avg_g + avg_r) / 3
+
+    scale_b = avg_gray / avg_b
+    scale_g = avg_gray / avg_g
+    scale_r = avg_gray / avg_r
+
+    result[:, :, 0] *= scale_b
+    result[:, :, 1] *= scale_g
+    result[:, :, 2] *= scale_r
+
+    data["image"] = np.clip(result, 0, 255).astype(np.uint8)
+    return data
+
+def log_transform(data, c=1):
+    data["image"] = c * np.log(data["image"] + 1)
+    data["image"] = np.uint8(data["image"])
     return data

@@ -8,6 +8,7 @@ import cv2
 from PyQt5.QtWidgets import QApplication, QMainWindow, QScrollArea, QWidget, QVBoxLayout
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from datetime import datetime
+import os
 
 #Colors
 color_red = (0,0,255)
@@ -68,6 +69,7 @@ def show_image_with_name(data, imageTitle, image):
     # cv2.imshow(image_window_name, image)
     return data
 
+#draw points for feature detection keypoints over original image
 def draw_points(data, color=color_green, radius=3, thickness=2, imageTitle="Points", pointsFieldName="keypoints"):
     points = data["metadata"].get(pointsFieldName, None) # points data from previous function in pipeline
     if (points is None):
@@ -78,6 +80,55 @@ def draw_points(data, color=color_green, radius=3, thickness=2, imageTitle="Poin
     for point in points:
         x, y = point.pt
         img = cv2.circle(img, (int(x), int(y)), radius, color, thickness)
+
+    show_image_with_name(data, imageTitle, img)
+    return data
+
+#draw points for np array over original image
+def draw_points_from_array(data, color=color_green, radius=3, thickness=2, imageTitle="Points", pointsFieldName="keypoints", makeColored=False):
+    points = data["metadata"].get(pointsFieldName, None)
+    if (points is None):
+        raise ValueError(f"{pointsFieldName} data must be defined previously in pipeline, in order to draw points")
+    
+    if (points.shape[1] != 2 or len(points.shape) != 2):
+        print(f"{pointsFieldName} data must be 2D array, ignoring drawing for {data['name']}")
+        return data
+    
+    img = data["image"].copy()
+    
+    if (makeColored):
+        img = cv2.cvtColor(img,cv2.COLOR_GRAY2RGB)
+
+    for point in points:
+        [x, y] = point
+        img = cv2.circle(img, (int(x), int(y)), radius, color, thickness)
+
+    show_image_with_name(data, imageTitle, img)
+    return data
+
+#draw cross for np array over original image, assuming points are multiple of 4, in 2D
+def draw_cross_from_array(data, color=color_green, radius=3, thickness=2, imageTitle="Points", pointsFieldName="keypoints", makeColored=False):
+    points = data["metadata"].get(pointsFieldName, None)
+    if (points is None):
+        raise ValueError(f"{pointsFieldName} data must be defined previously in pipeline, in order to draw points")
+    
+    if (points.shape[1] != 2 or len(points.shape) != 2):
+        print(f"{pointsFieldName} data must be 2D array, ignoring drawing for {data['name']}")
+        return data
+    
+    img = data["image"].copy()
+    
+    if (makeColored):
+        img = cv2.cvtColor(img,cv2.COLOR_GRAY2RGB)
+
+    for i in range(0,len(points),4):
+        [x, y] = points[i]
+        [x2, y2] = points[i+1]
+        [x3, y3] = points[i+2]
+        [x4, y4] = points[i+3]
+
+        img = cv2.line(img, (int(x), int(y)), (int(x4), int(y4)), color, thickness)
+        img = cv2.line(img, (int(x2), int(y2)), (int(x3), int(y3)), color, thickness)
 
     show_image_with_name(data, imageTitle, img)
     return data
@@ -130,8 +181,17 @@ def show_current_image(data, imageTitle="current image", resizeAmount=1):
     show_image_with_name(data, imageTitle, resize_img)
     return data
 
-def show_metadata_image(data, imageTitle="specified image", resizeAmount=1, imageName=""):
-    resize_img = cv2.resize(data["metadata"][imageName], (0, 0), fx=resizeAmount, fy=resizeAmount)
+def show_metadata_image(data, imageTitle="specified image", resizeAmount=1, imageName="metadata_img"):
+    img = data["metadata"].get(imageName, None)
+    if (img is None):
+        raise ValueError(f"Image {imageName} not found in metadata")
+    resize_img = cv2.resize(img.copy(), (0, 0), fx=resizeAmount, fy=resizeAmount)
+    show_image_with_name(data, imageTitle, resize_img)
+    return data
+
+# show an image given the direct image data, and the image name
+def _show_provided_image(data,  image, imageTitle="specified image", resizeAmount=1):
+    resize_img = cv2.resize(image.copy(), (0, 0), fx=resizeAmount, fy=resizeAmount)
     show_image_with_name(data, imageTitle, resize_img)
     return data
 
@@ -289,3 +349,55 @@ def display_scrollable_figure(fig, title="Debug", initial_size=(700, 500)):
     window.show()
 
     app.exec_()
+
+# draw rectangles over the image, used for debugging
+# rectangles: array of arrays [x1, y1, x2, y2] or [x, y, width, height] depending on withWidthHeight
+# color: color of the rectangles
+# thickness: thickness of the rectangle lines
+# imageTitle: title of the image window
+# fieldName: name of the field in metadata where the rectangles were stored
+# withWidthHeight: if True, the rectangles are defined as [x, y, width, height], otherwise as [x1, y1, x2, y2]
+
+def draw_rectangles(data, color=color_red, thickness=2, imageTitle="Rectangles", fieldName="rectangles", withWidthHeight=False, makeColored=False):
+    rectangles = data["metadata"].get(fieldName, None)
+    if (rectangles is None):
+        raise ValueError(f"Field {fieldName} must be defined previously in pipeline, to print its value")
+
+    img = data["image"].copy()
+    if (makeColored):
+        img = cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
+        
+    for rect in rectangles:
+        if (withWidthHeight):
+            [x, y, w, h] = map(int, np.round(rect))
+            x1 = x
+            y1 = y
+            x2 = x + w
+            y2 = y + h
+        else:
+            [x1, y1, x2, y2] = map(int, np.round(rect))
+        
+        img = cv2.rectangle(img, (x1, y1), (x2, y2), color, thickness)
+
+    show_image_with_name(data, imageTitle, img)
+    return data
+
+def show_bounding_box_cuts(data, bbFieldName="bounding_boxes", imageTitle="BBCuts"):
+    bboxes = data["metadata"].get(bbFieldName, None)
+    if (bboxes is None):
+        raise ValueError(f"Field {bbFieldName} must be defined previously in pipeline, to print its value")
+    
+    img = data["image"].copy()
+    
+    for i, bbox in enumerate(bboxes):
+        x1, y1, x2, y2 = bbox
+        piece_img = img[y1:y2, x1:x2]
+
+        show_image_with_name(data, f"{imageTitle}-bbox{i}", piece_img)
+    return data
+
+def download_current_image(data, path="temp/image"):
+    final_path = f"{path}_{data['name']}"
+    os.makedirs(os.path.dirname(final_path), exist_ok=True)
+    cv2.imwrite(final_path, data["image"])
+    return data

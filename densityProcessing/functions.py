@@ -25,7 +25,7 @@ def draw_hough_lines_on_warped_image(data):
     data["metadata"]["line_map"] = line_map 
     return data
 
-def calculate_corners(data):
+def calculate_corners(data, boardContourFieldName="board_contour_warped", boardCornersFieldName="board_corners"):
     density_map = cv2.GaussianBlur(data["metadata"]["line_map"], (45, 45), 0)
     
     height, width = data["metadata"]["line_map"].shape
@@ -77,7 +77,7 @@ def calculate_corners(data):
     [cv2.circle(output, pt, 10, 200, -1) for pt in dense_points if pt not in top_4]
     
     data["metadata"]["line_map"] = output
-    data["metadata"]["board_corners"] = np.array(top_4, dtype=np.float32)
-    data["metadata"]["board_contour"] = transformed_2
+    data["metadata"][boardCornersFieldName] = np.array(top_4, dtype=np.float32)
+    data["metadata"][boardContourFieldName] = transformed_2
 
     return data
