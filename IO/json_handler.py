@@ -1,5 +1,8 @@
-import json, cv2
+import json
+import cv2
 import re
+import os
+import pathlib
 
 #Stores an array of tuples with the image name and the object image
 def read_images():
@@ -13,6 +16,16 @@ def read_images():
         } 
     for i in data["image_files"]]
     return images_dict
+
+def read_image_paths_from_annotations(annotations_path):
+    data = json.load(open(annotations_path))
+
+    image_paths = []
+    for image in data["images"]:
+        if os.path.exists(image["path"]) and image["path"] == "images/99/G099_IMG050.jpg":
+            image_paths.append(image["path"])
+
+    return image_paths
 
 def read_single_image(path):
     orig_img = cv2.imread(path)
@@ -69,6 +82,22 @@ def write_results(data):
 
     return 0
 
+#output the processed images to a directory
+def write_image(data, output_dir, error=False):
+    for i in data:
+        if error:
+            # if error, write the original image
+            img = i["orig_img"]
+        else:
+            img = i["image"]
+        img_last_names = i["name"].split("/")[-2:]  # get the last folder and file name from the path
+        new_img_output_path = os.path.join(output_dir, "/".join(img_last_names))
+        # create all parent directories of output file if they do not exist
+        pathlib.Path(os.path.dirname(new_img_output_path)).mkdir(parents=True, exist_ok=True)
+        print(f"Writing image to {new_img_output_path}")
+        cv2.imwrite(new_img_output_path, img)
+    
+    return 0
 #format array of bounding boxes to a list of dictionaries
 def format_bboxes(array):
     result_list = []
